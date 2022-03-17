@@ -125,11 +125,12 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
 #' @export
 model_actions <- function(imm, 
                           mat, 
-                          mlgg,
+                          mlgg = 15,
                           mature = TRUE, 
                           comp_id = 'species', 
-                          init_mode, 
-                          bound_param){
+                          init_mode = 1, 
+                          bound_param = TRUE,
+                          parametric_sd = TRUE){
   
   stock <- if(mature) mat else imm
 
@@ -146,7 +147,10 @@ model_actions <- function(imm,
                                       factor_f =
                                         init_abund(imm, mat, comp_id, mature, init_mode, bound_param),
                                       mean_f = init_vonb(stock, 'species', bound_param),
-                                      stddev_f = init_sd(stock, comp_id, parametric = TRUE, bound_param),
+                                      stddev_f = init_sd(stock, 
+                                                         comp_id, 
+                                                         parametric = parametric_sd, 
+                                                         bound_param),
                                       alpha_f = g3_stock_param(stock, comp_id, 'walpha', bound_param),
                                       beta_f = g3_stock_param(stock, comp_id, 'wbeta', bound_param)),
     
