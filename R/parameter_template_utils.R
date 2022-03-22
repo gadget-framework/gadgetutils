@@ -2,6 +2,10 @@
 g3_init_guess <- function(params, pattern, 
                           value = 0, lower = NA, upper = NA, 
                           optimise = 1){
+  
+  if (!inherits(params, 'data.frame')){
+    stop("The 'params' argument should be a data.frame")
+  }
  
   ## Are the parameters (1) bounded internally (2) time- or age-varying
   is_param_bounded <- any(grepl(paste0(pattern, '.lower'), params$switch))
@@ -65,6 +69,10 @@ g3_init_guess <- function(params, pattern,
 #' @export
 transform_bounded <- function(params){
   
+  if (!inherits(params, 'data.frame')){
+    stop("The 'params' argument should be a data.frame")
+  }
+  
   ## Identify the bounded switches
   bounded_params <- params$switch[(grepl('\\.lower$', params$switch))]
   
@@ -91,6 +99,42 @@ transform_bounded <- function(params){
     }
   }
   return(params)
+}
+
+#' @export
+return_bounded <- function(params){
+  
+  if (!inherits(params, 'data.frame')){
+    stop("The 'params' argument should be a data.frame")
+  }
+  
+  ## Identify the bounded switches
+  bounded_params <- params$switch[(grepl('\\.lower$', params$switch))]
+  
+  if (length(bounded_params) > 0){
+    
+    bounded_params <- gsub('\\.lower$', '', bounded_params)
+    
+    for (i in bounded_params){
+      
+      ## Is it a varying parameter?
+      value_index <- grepl(paste0(i, '\\.[0-9]{1,4}$'), params$switch)
+      
+      if (!any(value_index)){
+        value_index <- grepl(paste0(i, '$'), params$switch)
+      } 
+      
+      ## Fill in values
+      params$value[value_index] <-
+        as.list(value_from_bounds(
+          unlist(params$value[value_index]),
+          params$value[grepl(paste0(i, '.lower$'), params$switch)][[1]],
+          params$value[grepl(paste0(i, '.upper$'), params$switch)][[1]]
+        ))
+    }
+  }
+  return(params)
+  
 }
 
 #' @export
