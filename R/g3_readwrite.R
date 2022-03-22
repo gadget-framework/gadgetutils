@@ -1,6 +1,10 @@
 #' @export
 write.g3.param <- function(params, gd, file_name){
   
+  ## Transform any bounded parameters (assuming this is more useful to see)
+  params <- transform_bounded(params)
+  
+  ## Modify columns
   params$value <- unlist(params$value)
   params$optimise <- as.numeric(params$optimise)
   params$random <- as.numeric(params$random)

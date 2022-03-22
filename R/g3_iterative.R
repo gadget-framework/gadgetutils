@@ -30,9 +30,9 @@ g3_iterative <- function(gd,
   
   ## Initial parameters (weights included in parameter template)
   for (i in names(init_params$params)){
-    write.tmb.param(transform_bounded(init_params$params[[i]]), 
-                    out_path, 
-                    paste0('params.init.stage1.', i))
+    write.g3.param(init_params$params[[i]], 
+                   out_path, 
+                   paste0('params.init.stage1.', i))
   }
   
   ## -------------- Run first stage of iterative re-weighting  -----------------
@@ -50,9 +50,9 @@ g3_iterative <- function(gd,
   
   for (i in names(stage1_params)){
     attr(stage1_params[[i]], 'summary') <- NULL
-    write.tmb.param(transform_bounded(stage1_params[[i]]),
-                    out_path,
-                    paste0('params.out.stage1.', i))
+    write.g3.param(stage1_params[[i]],
+                   out_path,
+                   paste0('params.out.stage1.', i))
   }
   
   
@@ -70,9 +70,9 @@ g3_iterative <- function(gd,
   ## Split between weights and params?
   
   for (i in names(int_params)){
-    write.tmb.param(transform_bounded(int_params[[i]]),
-                    out_path,
-                    paste0('params.init.stage2.', i))
+    write.g3.param(int_params[[i]],
+                   out_path,
+                   paste0('params.init.stage2.', i))
   }
   
   ## ----------- Second round of re-weighting ----------------------------------
@@ -92,9 +92,9 @@ g3_iterative <- function(gd,
   
   for (i in names(stage2_params)){
     attr(stage2_params[[i]], 'summary') <- NULL
-    write.tmb.param(transform_bounded(stage2_params[[i]]),
-                    out_path,
-                    paste0('params.out.stage2.', i))
+    write.g3.param(stage2_params[[i]],
+                   out_path,
+                   paste0('params.out.stage2.', i))
   }
   
   ## ------------ Final parameter set ------------------------------------------
@@ -112,9 +112,9 @@ g3_iterative <- function(gd,
   final_params <- 
     stage2_params[[final_score[which.min(final_score$s), 'group'][[1]]]]
   
-  write.tmb.param(transform_bounded(final_params),
-                  out_path,
-                  'final.params')
+  write.g3.param(final_params,
+                 out_path,
+                 'final.params')
   
   #save(final_params, file = file.path(out.dir, 'final_params.Rdata'))
   
