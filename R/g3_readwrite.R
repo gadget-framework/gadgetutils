@@ -10,6 +10,10 @@ write.g3.param <- function(params, gd, file_name){
   params$random <- as.numeric(params$random)
   params[params$type == '', 'type'] <- '.'
   
+  if ('transformed_value' %in% names(params)){
+    params$transformed_value <- unlist(params$transformed_value)
+  }
+  
   write.g3.file(params, gd, file_name)
   
 }
@@ -31,3 +35,31 @@ write.g3.file <- function(obj, gd, file_name){
   
 }
 
+#' @export
+read.g3.param <- function(gd, file.name){
+  
+  path <- file.path(gd, file.name)
+  if (!file.exists(path)){
+    stop(paste0('The file: ', path, ' does not exist'))
+  }
+  
+  params <- utils::read.table(path, header = TRUE)
+  
+  ## Modify columns
+  params[params$type == '.', 'type'] <- ''
+  params$optimise <- as.logical(params$optimise)
+  params$random <- as.logical(params$random)
+  
+  ## Convert value columns to list
+  params$value <- as.list(params$value)
+  names(params$value) <- params$switch
+  
+  if ('transformed_value' %in% names(params)){
+    params$transformed_value <- as.list(params$transformed_value)
+    names(params$transformed_value) <- params$switch
+  }
+  
+  row.names(params) <- params$switch
+  return(params)
+  
+}
