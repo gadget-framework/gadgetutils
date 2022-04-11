@@ -130,7 +130,7 @@ model_actions <- function(imm,
                           comp_id = 'species', 
                           init_mode = 1, 
                           bound_param = TRUE,
-                          parametric_sd = TRUE){
+                          parametric_sd = FALSE){
   
   stock <- if(mature) mat else imm
 
