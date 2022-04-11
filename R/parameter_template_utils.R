@@ -1,3 +1,12 @@
+#' Set initial guesses, automatically honouring any bounded() parameters
+#'
+#' @param params Parameter template from g3_to_tmb()
+#' @param pattern Regular expression of parameter names in template to change
+#' @param value Initial value for all parameters matching pattern
+#' @param lower Lower bound to set for all parameters matching pattern
+#' @param upper Upper bound to set for all parameters matching pattern
+#' @param optimise 1 if parameters matching pattern should be optimised, zero otherwise.
+#' @return Updated parameter template
 #' @export
 g3_init_guess <- function(params, pattern, 
                           value = 0, lower = NA, upper = NA, 
@@ -107,12 +116,24 @@ transform_bounded <- function(params){
   return(params)
 }
 
+#' Convert value into it's normalised form for use with bounded()
+#'
+#' @param x Raw value
+#' @param lower Lower bound for x
+#' @param upper Upper bound for x
+#' @return Normalised value for use with bounded()
 #' @export
 value_from_bounds <- function(x, lower, upper){
   if (x == lower && x == upper) return(x)
   else  return(log((upper - lower)/(x - lower) - 1))
 }
 
+#' Convert normalised bounded form back to value
+#'
+#' @param x Input normalised value
+#' @param lower Lower bound for x
+#' @param upper Upper bound for x
+#' @return Raw value for x without bounding
 #' @export
 eval_bounded <- function(x, lower, upper){
   return(lower + (upper - lower)/(1 + exp(x)))

@@ -1,8 +1,18 @@
+#' Extract species name from stock
+#'
+#' @param stock A g3 stock object
+#' @return Species name from stock
 #' @export
 stock_species <- function(stock){
   return(g3_stock_name(stock, 'species'))
 }
 
+#' Extract parts from stock name
+#'
+#' @param stock A g3 stock object
+#' @param id Part to extract, or 'full' to return the stock name
+#' @return Part from stock name
+#' @export
 #' @export
 g3_stock_name <- function(stock, id = 'full'){
   stopifnot(gadget3:::g3_is_stock(stock))
@@ -17,6 +27,13 @@ g3_stock_name <- function(stock, id = 'full'){
   }
 }
 
+#' Generate g3 code to reference a single parameter
+#'
+#' @param stock A g3 stock object
+#' @param id Part of the stock name to use in parameter name
+#' @param param_name Parameter name to append to the stock name
+#' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @return formula to insert parameter into g3 model
 #' @export
 g3_stock_param <- function(stock, id = 'full', param_name, bound_param = FALSE){
   
@@ -42,6 +59,13 @@ g3_stock_param <- function(stock, id = 'full', param_name, bound_param = FALSE){
   return(out)
 }
 
+#' Generate g3 code to reference a stock parameter, by stock age
+#'
+#' @param stock A g3 stock object
+#' @param id Part of the stock name to use in parameter name
+#' @param param_name Parameter name to append to the stock name
+#' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @return formula to insert parameter table into g3 model
 #' @export
 g3_stock_table <- function(stock, id = 'full', param_name, bound_param = FALSE){
   
@@ -116,6 +140,13 @@ g3_stock_table <- function(stock, id = 'full', param_name, bound_param = FALSE){
   return(out)
 }
 
+#' Generate g3 code to reference a stock parameter, divided by model year
+#'
+#' @param stock A g3 stock object
+#' @param id Part of the stock name to use in parameter name
+#' @param param_name Parameter name to append to the stock name
+#' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @return formula to insert parameter table into g3 model
 #' @export
 g3_year_table <- function(stock, id = 'full', param_name, bound_param = FALSE, random = FALSE){
   

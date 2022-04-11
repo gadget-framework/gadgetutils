@@ -1,3 +1,13 @@
+#' Generate parameterised g3a_initial_abund
+#'
+#' @param imm A g3 stock object for immature specimens
+#' @param imm A g3 stock object for mature specimens
+#' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
+#' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
+#' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
+#' @param bound_param Should parameters be normalised with g3 bounded() ?
+#' @return g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
+#'
 #' @export
 init_abund <- function(imm,
                        mat,
@@ -81,6 +91,12 @@ init_abund <- function(imm,
   
 }
 
+#' Generate parameterised version of g3a_initial_vonb()
+#'
+#' @param stock A g3 stock object
+#' @param id Part of the stock name to use in parameter name
+#' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @return g3a_initial_vonb formula
 #' @export
 init_vonb <- function(stock, id = 'species', bound_param = TRUE){
   
@@ -91,6 +107,12 @@ init_vonb <- function(stock, id = 'species', bound_param = TRUE){
   
 }
 
+#' Generate paramerterised stock renewal factor
+#'
+#' @param stock A g3 stock object
+#' @param id Part of the stock name to use in parameter name
+#' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @return "scalar * renew" formula, parameterised for given stock
 #' @export
 stock_renewal <- function(stock, id = 'species', bound_param = TRUE){
 
@@ -106,6 +128,13 @@ stock_renewal <- function(stock, id = 'species', bound_param = TRUE){
   
 }
 
+#' Generate parameterised initial conditions 
+#'
+#' @param stock A g3 stock object
+#' @param id Part of the stock name to use in parameter name
+#' @param parametric Is the initial conditions stddev parameterised, or a table by age?
+#' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @return A formula suitable for g3a_initialconditions_normalparam()
 #' @export
 init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
   
@@ -122,6 +151,17 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
   }
 }
 
+#' Generate a standard set of model actions
+#'
+#' @param imm A g3 stock object for immature specimens
+#' @param imm A g3 stock object for mature specimens
+#' @param mlgg maxlengthgroupgrowth for growth of both mature/immature
+#' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
+#' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
+#' @param init_mode 
+#' @param bound_param Should parameters be normalised with g3 bounded() ?
+#' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
+#' @return A list of g3 actions
 #' @export
 model_actions <- function(imm, 
                           mat, 

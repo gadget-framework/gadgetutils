@@ -1,3 +1,7 @@
+#' Given an action type, return it's running order in a g3 model
+#'
+#' @param action_name String for a action type, e.g. "natural_mortality"
+#' @return Position integer, e.g. 4
 #' @export
 g3_action_order <- function(action_name){
   
@@ -26,6 +30,12 @@ g3_action_order <- function(action_name){
   }
 }
 
+#' Find steps relevant to an action type
+#'
+#' @param action_list List of g3 actions, e.g. list(g3a_time(), ...)
+#' @param type A string representing the sort of action you're looking for, e.g. "spawning"
+#' @param model_object The g3_stock object to find an action for
+#' @return A data.frame containing pos (position by integer), name & regex pattern for matching steps
 #' @export
 locate_g3_actions <- function(action_list, type, model_object = NULL){
   
