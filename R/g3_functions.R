@@ -1,3 +1,10 @@
+#' Perform multiple optimisation runs of a model, removing a year for each
+#'
+#' @param dir Directory to store output from RETRO runs
+#' @param model A G3 model, produced by g3_to_tmb()
+#' @param params Initial parameters to use with the model
+#' @param num.years How many years back to go
+#' @return List of results for each optimisation run
 #' @export
 g3_retro <- function(dir, model, params, num.years = 5){
   

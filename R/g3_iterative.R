@@ -1,3 +1,11 @@
+#' Perform multiple optimisation runs of a model, reweighting with each run
+#'
+#' @param gd Directory to store output
+#' @param wgts Directory name within gd to store run outputs
+#' @param r_model A G3 model, produced by g3_to_r()
+#' @param params.in Initial parameters to use with the model
+#' @param grouping List of component names to optmise together
+#' @return Final set of parameters
 #' @importFrom rlang .data
 #' @importFrom stats optim
 #' @export
