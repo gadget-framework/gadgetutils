@@ -10,11 +10,13 @@
 #' @importFrom stats optim
 #' @export
 g3_iterative <- function(gd,
-                          wgts = 'WGTS',
-                          r_model, 
-                          tmb_model, 
-                          params.in, 
-                          grouping = list()){
+                         wgts = 'WGTS',
+                         r_model, 
+                         tmb_model, 
+                         params.in, 
+                         grouping = list(),
+                         opt_method = 'BFGS',
+                         use_parscale = TRUE){
   
   out_path <- file.path(gd, wgts)
   if (!dir.exists(out_path)) dir.create(out_path, recursive = TRUE)
@@ -46,7 +48,10 @@ g3_iterative <- function(gd,
   ## -------------- Run first stage of iterative re-weighting  -----------------
   
   stage1_params <- parallel::mclapply(init_params$params, 
-                                      function(x){g3_iterative_run(x, tmb_model)}, 
+                                      function(x){g3_iterative_run(x, 
+                                                                   tmb_model, 
+                                                                   opt_method,
+                                                                   use_parscale)}, 
                                       mc.cores = parallel::detectCores())
   
   ## Summary of optimisation settings and run details
@@ -86,7 +91,10 @@ g3_iterative <- function(gd,
   ## ----------- Second round of re-weighting ----------------------------------
   
   stage2_params <- parallel::mclapply(int_params, 
-                                      function(x){g3_iterative_run(x, tmb_model)}, 
+                                      function(x){g3_iterative_run(x, 
+                                                                   tmb_model,
+                                                                   opt_method,
+                                                                   use_parscale)}, 
                                       mc.cores = parallel::detectCores())
   
   #save(stage2_params, file = file.path(out.dir, 'stage2_params.Rdata'))
@@ -219,26 +227,42 @@ g3_lik_out <- function(model, param){
 # }
 
 #' @export
-g3_iterative_run <- function(param, tmb_model){
+g3_iterative_run <- function(param, 
+                             tmb_model, 
+                             opt_method = 'BFGS', 
+                             use_parscale = TRUE){
   
   # Compile and generate TMB ADFun (see ?TMB::MakeADFun)
   obj_fun <- g3_tmb_adfun(tmb_model, param)
   
-  ## Sticking some defaults here for now...
-  ## Todo: add to function parameters, would be useful to have options 
-  ## for 'L-BFGS-B' for instance, could be determined from param structure?
-  opt.method <- 'BFGS'
-  maxit <- 1000
-  reltol <- .Machine$double.eps^2
+  # Sort out upper and lower
+  if (opt_method == 'L-BFGS-B'){
+    parhigh <- g3_tmb_upper(param)
+    parlow <- g3_tmb_lower(param)
+  }
+  else{
+    parhigh <- Inf
+    parlow <- -Inf
+  }
+  
+  ## Control list for optimisation
+  opt_control <- list(
+    trace = 2,
+    maxit = 1000,
+    reltol = .Machine$double.eps^2
+  )
+  if (use_parscale){
+    opt_control <- c(opt_control, list(parscale = g3_tmb_parscale(param)))
+  }
   
   ## Run optimiser
   fit.opt <- optim(g3_tmb_par(param),
                    obj_fun$fn,
                    obj_fun$gr,
-                   method = opt.method,
-                   control = list(trace = 2,
-                                  maxit = maxit, 
-                                  reltol = reltol))
+                   method = opt_method,
+                   lower = parlow,
+                   upper = parhigh,
+                   control = opt_control)
   
   ## Optimised parameters  
   p <- g3_tmb_relist(param,fit.opt$par)
@@ -312,4 +336,25 @@ tabulate_SS <- function(lik.out, grouping){
   return(list(SS = SS, SS_norm = SS_norm))
   
 }
+
+#' @export
+g3_tmb_parscale <- function (parameters) {
+  # Temporary location - should be in gadget3
+  # Get all parameters we're thinking of optimising
+  p <- parameters[
+    !is.na(parameters[['parscale']]) &
+      parameters$optimise, c('switch', 'value', 'parscale')]
+  
+  # Get the length of all values
+  p$val_len <- vapply(p[['value']], length, integer(1))
+  
+  # Turn into a list with same dimensions as each value
+  out <- structure(
+    lapply(seq_len(nrow(p)), function (i) rep(p[i, 'parscale'], p[i, 'val_len'])),
+    names = gadget3:::cpp_escape_varname(p$switch))
+  
+  # Unlist the result to condense list back to vector
+  unlist(out)
+}
+
 
