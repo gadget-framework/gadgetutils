@@ -269,9 +269,9 @@ g3_iterative_run <- function(param,
   param$value[names(p)] <- p
   
   ## Add summary of input/output to an attribute of params
-  attributes(param)$summary <- data.frame(opt_method = opt.method,
-                                          max_iterations = maxit,
-                                          reltol = reltol,
+  attributes(param)$summary <- data.frame(opt_method = opt_method,
+                                          max_iterations = opt_control$maxit,
+                                          reltol = opt_control$reltol,
                                           function_calls = fit.opt$counts[1],
                                           gradient_calls = fit.opt$counts[2],
                                           convergence = ifelse(fit.opt$convergence == 0, TRUE, FALSE),
