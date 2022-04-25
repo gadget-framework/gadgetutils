@@ -9,6 +9,7 @@ g3_year_table(
   id = "full",
   param_name,
   bound_param = FALSE,
+  exponentiate = FALSE,
   random = FALSE
 )
 }
@@ -20,6 +21,8 @@ g3_year_table(
 \item{param_name}{Parameter name to append to the stock name}
 
 \item{bound_param}{Should this parameter be normalised with g3 bounded() ?}
+
+\item{exponentiate}{Should the parameter be exponentiated}
 }
 \value{
 formula to insert parameter table into g3 model

@@ -12,7 +12,9 @@ model_actions(
   comp_id = "species",
   init_mode = 1,
   bound_param = TRUE,
-  parametric_sd = TRUE
+  parametric_sd = FALSE,
+  exp_rec = FALSE,
+  exp_init = FALSE
 )
 }
 \arguments{
@@ -29,6 +31,10 @@ model_actions(
 \item{bound_param}{Should parameters be normalised with g3 bounded() ?}
 
 \item{parametric_sd}{Is the initial conditions stddev parameterised, or a table by age?}
+
+\item{exp_rec}{Should the recruitment parameters and scalar be exponentiated?}
+
+\item{exp_init}{Should the initial abundance parameters and scalar be exponentiated?}
 }
 \value{
 A list of g3 actions

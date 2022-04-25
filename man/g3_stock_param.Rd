@@ -4,7 +4,13 @@
 \alias{g3_stock_param}
 \title{Generate g3 code to reference a single parameter}
 \usage{
-g3_stock_param(stock, id = "full", param_name, bound_param = FALSE)
+g3_stock_param(
+  stock,
+  id = "full",
+  param_name,
+  bound_param = FALSE,
+  exponentiate = FALSE
+)
 }
 \arguments{
 \item{stock}{A g3 stock object}
@@ -14,6 +20,8 @@ g3_stock_param(stock, id = "full", param_name, bound_param = FALSE)
 \item{param_name}{Parameter name to append to the stock name}
 
 \item{bound_param}{Should this parameter be normalised with g3 bounded() ?}
+
+\item{exponentiate}{Should the parameter be exponentiated}
 }
 \value{
 formula to insert parameter into g3 model

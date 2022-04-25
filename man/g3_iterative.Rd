@@ -10,7 +10,9 @@ g3_iterative(
   r_model,
   tmb_model,
   params.in,
-  grouping = list()
+  grouping = list(),
+  opt_method = "BFGS",
+  use_parscale = TRUE
 )
 }
 \arguments{

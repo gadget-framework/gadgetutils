@@ -10,7 +10,8 @@ init_abund(
   comp_id = "species",
   mature = TRUE,
   init_mode = 1,
-  bound_param = TRUE
+  bound_param = TRUE,
+  exponentiate = FALSE
 )
 }
 \arguments{
@@ -23,6 +24,8 @@ init_abund(
 \item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
 
 \item{bound_param}{Should parameters be normalised with g3 bounded() ?}
+
+\item{exponentiate}{Should the initial abundance parameters be exponentiated?}
 }
 \value{
 g3a_initial_abund formula for use in g3a_initialconditions_normalparam()

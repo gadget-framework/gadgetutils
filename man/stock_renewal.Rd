@@ -4,7 +4,7 @@
 \alias{stock_renewal}
 \title{Generate paramerterised stock renewal factor}
 \usage{
-stock_renewal(stock, id = "species", bound_param = TRUE)
+stock_renewal(stock, id = "species", bound_param = TRUE, exponentiate = FALSE)
 }
 \arguments{
 \item{stock}{A g3 stock object}
@@ -12,6 +12,8 @@ stock_renewal(stock, id = "species", bound_param = TRUE)
 \item{id}{Part of the stock name to use in parameter name}
 
 \item{bound_param}{Should this parameter be normalised with g3 bounded() ?}
+
+\item{exponentiate}{Should the renewal parameters be exponentiated?}
 }
 \value{
 "scalar * renew" formula, parameterised for given stock
