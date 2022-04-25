@@ -6,6 +6,7 @@
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
 #' @param bound_param Should parameters be normalised with g3 bounded() ?
+#' @param exponentiate Should the initial abundance parameters be exponentiated?
 #' @return g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
 #'
 #' @export
@@ -14,7 +15,8 @@ init_abund <- function(imm,
                        comp_id = 'species',
                        mature = TRUE,
                        init_mode = 1,
-                       bound_param = TRUE){
+                       bound_param = TRUE,
+                       exponentiate = FALSE){
   
   stock <- if (mature) mat else imm
   
@@ -46,8 +48,8 @@ init_abund <- function(imm,
     ## MODE 1: Initial parameter per age group (across stocks)  
     if (init_mode == 1){
       
-      init <- g3_stock_table(list(imm, mat), comp_id, 'init', bound_param)
-      init_scalar <- g3_stock_param(stock, comp_id, 'init.scalar', bound_param)
+      init <- g3_stock_table(list(imm, mat), comp_id, 'init', bound_param, exponentiate)
+      init_scalar <- g3_stock_param(stock, comp_id, 'init.scalar', bound_param, exponentiate)
       m_table <- g3_stock_param(stock, 'full', 'M', bound_param)
       #m_table <- g3_stock_table(list(imm, mat), comp_id, 'M', bound_param)
     
@@ -71,8 +73,8 @@ init_abund <- function(imm,
     else{
       
       ## MODE 2: Initial parameter per age group per stock
-      init <- g3_stock_table(stock, 'full', 'init', bound_param)
-      init_scalar <- g3_stock_param(stock, 'full', 'init.scalar', bound_param)
+      init <- g3_stock_table(stock, 'full', 'init', bound_param, exponentiate)
+      init_scalar <- g3_stock_param(stock, 'full', 'init.scalar', bound_param, exponentiate)
       
       ## Minimum age taken from immature stock
       m_table <- g3_stock_param(stock, 'full', 'M', bound_param)
@@ -112,19 +114,25 @@ init_vonb <- function(stock, id = 'species', bound_param = TRUE){
 #' @param stock A g3 stock object
 #' @param id Part of the stock name to use in parameter name
 #' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @param exponentiate Should the renewal parameters be exponentiated?
 #' @return "scalar * renew" formula, parameterised for given stock
 #' @export
-stock_renewal <- function(stock, id = 'species', bound_param = TRUE){
+stock_renewal <- function(stock, 
+                          id = 'species', 
+                          bound_param = TRUE, 
+                          exponentiate = FALSE){
 
   gadget3:::f_substitute(~scalar * renew,
                          list(scalar = g3_stock_param(stock,
                                                       id,
                                                       'rec.scalar', 
-                                                      bound_param),
+                                                      bound_param,
+                                                      exponentiate),
                               renew = g3_year_table(stock,
                                                     id, 
                                                     'rec',
-                                                    bound_param)))
+                                                    bound_param,
+                                                    exponentiate)))
   
 }
 
@@ -161,6 +169,8 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
 #' @param init_mode 
 #' @param bound_param Should parameters be normalised with g3 bounded() ?
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
+#' @param exp_rec Should the recruitment parameters and scalar be exponentiated?
+#' @param exp_init Should the initial abundance parameters and scalar be exponentiated?
 #' @return A list of g3 actions
 #' @export
 model_actions <- function(imm, 
@@ -170,7 +180,9 @@ model_actions <- function(imm,
                           comp_id = 'species', 
                           init_mode = 1, 
                           bound_param = TRUE,
-                          parametric_sd = FALSE){
+                          parametric_sd = FALSE,
+                          exp_rec = FALSE,
+                          exp_init = FALSE){
   
   stock <- if(mature) mat else imm
 
@@ -185,7 +197,7 @@ model_actions <- function(imm,
                                       # NB: area & age factor together (gadget2 just multiplied them)
                                       # initial abundance at age is 1e4 * q
                                       factor_f =
-                                        init_abund(imm, mat, comp_id, mature, init_mode, bound_param),
+                                        init_abund(imm, mat, comp_id, mature, init_mode, bound_param, exp_init),
                                       mean_f = init_vonb(stock, 'species', bound_param),
                                       stddev_f = init_sd(stock, 
                                                          comp_id, 
@@ -220,7 +232,7 @@ model_actions <- function(imm,
       
       ## RENEWAL
       g3a_renewal_normalparam(imm,
-                              factor_f = stock_renewal(imm, id = comp_id, bound_param),
+                              factor_f = stock_renewal(imm, id = comp_id, bound_param, exp_rec),
                               mean_f = init_vonb(imm, 'species', bound_param),
                               stddev_f = g3_stock_param(imm, comp_id, 'rec.sd', bound_param),
                               alpha_f = g3_stock_param(imm, comp_id, 'walpha', bound_param),
