@@ -33,28 +33,38 @@ g3_stock_name <- function(stock, id = 'full'){
 #' @param id Part of the stock name to use in parameter name
 #' @param param_name Parameter name to append to the stock name
 #' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @param exponentiate Should the parameter be exponentiated
 #' @return formula to insert parameter into g3 model
 #' @export
-g3_stock_param <- function(stock, id = 'full', param_name, bound_param = FALSE){
+g3_stock_param <- function(stock, 
+                           id = 'full', 
+                           param_name, 
+                           bound_param = FALSE,
+                           exponentiate = FALSE){
+  
+  ## Checks
+  stopifnot(gadget3:::g3_is_stock(stock))
+  
+  ## Add suffix to param name if exponentiating
+  param_name <- paste0(param_name, ifelse(exponentiate, '_exp', ''))
   
   ## Parameter name
   stock_param <- paste(g3_stock_name(stock, id), param_name, sep = ".")
   
-  ## Unbounded parameter reference
-  ## Note, using f_substitute so environment is attached (for subsequent f_substitute calls)
-  if (!bound_param){
-    out <- gadget3:::f_substitute(~g3_param(x),#, lower = -9999, upper = 9999), 
-                                  list(x = stock_param))
-  }
-  else{
-    ## Bounded parameter reference 
-    ## Lower and upper bounds included as parameters that are not optimised
-    out <- gadget3:::f_substitute(~bounded(g3_param(x),
+  ## Setup unbounded param references
+  if (exponentiate) out <- gadget3:::f_substitute(~exp(g3_param(x)), list(x = stock_param))
+  else out <- gadget3:::f_substitute(~g3_param(x), list(x = stock_param))
+  
+  ## Add lower and upper bounds if the parameter is to be bounded
+  if (bound_param){
+    
+    out <- gadget3:::f_substitute(~bounded(x,
                                            g3_param(x_lower, optimise = FALSE),#, value = -9999),
                                            g3_param(x_upper, optimise = FALSE)),#, value = 9999)),
-                                  list(x = stock_param,
+                                  list(x = out,
                                        x_lower = paste(stock_param, 'lower', sep = '.'),
                                        x_upper = paste(stock_param, 'upper', sep = '.')))
+    
   }
   return(out)
 }
@@ -65,9 +75,14 @@ g3_stock_param <- function(stock, id = 'full', param_name, bound_param = FALSE){
 #' @param id Part of the stock name to use in parameter name
 #' @param param_name Parameter name to append to the stock name
 #' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @param exponentiate Should the parameter be exponentiated
 #' @return formula to insert parameter table into g3 model
 #' @export
-g3_stock_table <- function(stock, id = 'full', param_name, bound_param = FALSE){
+g3_stock_table <- function(stock, 
+                           id = 'full', 
+                           param_name, 
+                           bound_param = FALSE,
+                           exponentiate = FALSE){
   
   ## Check whether stock is a g3 stock
   is.stock <- gadget3:::g3_is_stock(stock)
@@ -111,31 +126,36 @@ g3_stock_table <- function(stock, id = 'full', param_name, bound_param = FALSE){
     }
   }
   
+  ## Add suffix to param name if exponentiating
+  param_name <- paste0(param_name, ifelse(exponentiate, '_exp', ''))
+  
   ## Parameter name
   stock_param <- paste(g3_stock_name(stock[[1]], id = id), param_name, sep = '.')
   
+  ## Setup unbounded parameter reference
+  out <- gadget3:::f_substitute(~g3_param_table(x, 
+                                                data.frame(age = seq(a0, a1))),
+                                #  lower = -9999,
+                                #  upper = 9999),
+                                list(x = stock_param,
+                                     a0 = lage,
+                                     a1 = uage))
   
-  if (!bound_param){
-    ## Unbounded  
-    out <- gadget3:::f_substitute(~g3_param_table(x, 
-                                                  data.frame(age = seq(a0, a1))),
-                                                #  lower = -9999,
-                                                #  upper = 9999),
-                                  list(x = stock_param,
-                                       a0 = lage,
-                                       a1 = uage))
+  ## Exponentiate the parameter
+  if (exponentiate){
+    out <- gadget3:::f_substitute(~exp(x), list(x = out))
   }
-  else{
-    ## Bounded
-    out <- gadget3:::f_substitute(~bounded(g3_param_table(x,
-                                                          data.frame(age = seq(a0, a1))), 
+  
+  ## Add lower and upper bounds if the parameter is to be bounded
+  if (bound_param){
+    
+    out <- gadget3:::f_substitute(~bounded(x, 
                                            g3_param(x_lower, optimise = FALSE),#, value = -9999), 
                                            g3_param(x_upper, optimise = FALSE)),#, value = 9999)),
-                                  list(x = stock_param,
-                                       a0 = lage,
-                                       a1 = uage,
+                                  list(x = out,
                                        x_lower = paste(stock_param, 'lower', sep = '.'),
                                        x_upper = paste(stock_param, 'upper', sep = '.')))
+    
   }
   return(out)
 }
@@ -146,39 +166,52 @@ g3_stock_table <- function(stock, id = 'full', param_name, bound_param = FALSE){
 #' @param id Part of the stock name to use in parameter name
 #' @param param_name Parameter name to append to the stock name
 #' @param bound_param Should this parameter be normalised with g3 bounded() ?
+#' @param exponentiate Should the parameter be exponentiated
 #' @return formula to insert parameter table into g3 model
 #' @export
-g3_year_table <- function(stock, id = 'full', param_name, bound_param = FALSE, random = FALSE){
+g3_year_table <- function(stock, 
+                          id = 'full', 
+                          param_name, 
+                          bound_param = FALSE, 
+                          exponentiate = FALSE,
+                          random = FALSE){
+  
   
   ## Checks
   stopifnot(gadget3:::g3_is_stock(stock))
   
+  ## Add suffix to param name if exponentiating
+  param_name <- paste0(param_name, ifelse(exponentiate, '_exp', ''))
+  
   ## Parameter name
   stock_param <- paste(g3_stock_name(stock, id), param_name, sep = ".")
   
-  if (!bound_param){
-    ## Unbounded table
-    out <- gadget3:::f_substitute(~g3_param_table(x, 
-                                                  expand.grid(cur_year = seq(start_year, 
-                                                                             end_year)),
-                                                  #lower = -9999,
-                                                  #upper = 9999,
-                                                  random = random),
-                                  list(x = stock_param,
-                                       random = random))
-  }
-  else{
-    ## Bounded
-    out <- gadget3:::f_substitute(~bounded(g3_param_table(x,
-                                                          expand.grid(cur_year = seq(start_year, 
-                                                                                     end_year)),
-                                                          random = random), 
+  ## Setup unbounded, unexponentiated param reference
+  out <- gadget3:::f_substitute(~g3_param_table(x, 
+                                                expand.grid(cur_year = seq(start_year, 
+                                                                           end_year)),
+                                                #lower = -9999,
+                                                #upper = 9999,
+                                                random = random),
+                                list(x = stock_param,
+                                     random = random))
+  
+  ## Exponentiate the parameter
+  if (exponentiate){
+    out <- gadget3:::f_substitute(~exp(x), list(x = out))
+  } 
+  
+  ## Add lower and upper bounds if the parameter is to be bounded
+  if (bound_param){
+    
+    out <- gadget3:::f_substitute(~bounded(x, 
                                            g3_param(x_lower, optimise = FALSE),#, value = -9999), 
                                            g3_param(x_upper, optimise = FALSE)),#, value = 9999)),
-                                  list(x = stock_param,
+                                  list(x = out,
                                        x_lower = paste(stock_param, 'lower', sep = '.'),
                                        x_upper = paste(stock_param, 'upper', sep = '.'),
-                                       random = random))
+                                       random = random))  
+    
   }
   return(out)
 }
