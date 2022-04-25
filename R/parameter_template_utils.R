@@ -18,7 +18,7 @@ g3_init_guess <- function(params, pattern,
   }
  
   ## Check whether parameter is exponentiated
-  is_param_exp <- any(grepl(paste0(pattern, '_exp.'), params$switch))
+  is_param_exp <- any(grepl(paste0(pattern, '_exp'), params$switch))
   if (is_param_exp) pattern <- paste0(pattern, '_exp')
  
   ## Are the parameters (1) bounded internally (2) time- or age-varying
@@ -75,7 +75,11 @@ g3_init_guess <- function(params, pattern,
   }
   else{
     ## Need to log value if parameter is exponentiated
-    if (is_param_exp) value <- log(value)
+    if (is_param_exp){ 
+      value <- log(value)
+      lower <- log(lower)
+      upper <- log(upper)
+    }
     
     ## Fill in the horizontal template
     params[grepl(v_pattern, params$switch), 'value'] <- value
