@@ -198,7 +198,7 @@ model_actions <- function(imm,
                                       # initial abundance at age is 1e4 * q
                                       factor_f =
                                         init_abund(imm, mat, comp_id, mature, init_mode, bound_param, exp_init),
-                                      mean_f = init_vonb(stock, 'species', bound_param),
+                                      mean_f = init_vonb(stock, comp_id, bound_param),
                                       stddev_f = init_sd(stock, 
                                                          comp_id, 
                                                          parametric = parametric_sd, 
@@ -233,7 +233,7 @@ model_actions <- function(imm,
       ## RENEWAL
       g3a_renewal_normalparam(imm,
                               factor_f = stock_renewal(imm, id = comp_id, bound_param, exp_rec),
-                              mean_f = init_vonb(imm, 'species', bound_param),
+                              mean_f = init_vonb(imm, comp_id, bound_param),
                               stddev_f = g3_stock_param(imm, comp_id, 'rec.sd', bound_param),
                               alpha_f = g3_stock_param(imm, comp_id, 'walpha', bound_param),
                               beta_f = g3_stock_param(imm, comp_id, 'wbeta', bound_param),
