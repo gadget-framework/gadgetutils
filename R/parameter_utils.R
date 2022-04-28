@@ -71,7 +71,7 @@ g3_stock_param <- function(stock,
 
 #' Generate g3 code to reference a stock parameter, by stock age
 #'
-#' @param stock A g3 stock object
+#' @param stock A g3 stock object or a list of g3 stock objects (if creating a table that includes the age ranges of multiple stocks)
 #' @param id Part of the stock name to use in parameter name
 #' @param param_name Parameter name to append to the stock name
 #' @param bound_param Should this parameter be normalised with g3 bounded() ?

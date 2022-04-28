@@ -13,7 +13,7 @@ g3_stock_table(
 )
 }
 \arguments{
-\item{stock}{A g3 stock object}
+\item{stock}{A g3 stock object or a list of g3 stock objects (if creating a table that includes the age ranges of multiple stocks)}
 
 \item{id}{Part of the stock name to use in parameter name}
 

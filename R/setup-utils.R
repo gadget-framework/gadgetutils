@@ -162,7 +162,7 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
 #' Generate a standard set of model actions
 #'
 #' @param imm A g3 stock object for immature specimens
-#' @param imm A g3 stock object for mature specimens
+#' @param mat A g3 stock object for mature specimens
 #' @param mlgg maxlengthgroupgrowth for growth of both mature/immature
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature

@@ -18,7 +18,9 @@ model_actions(
 )
 }
 \arguments{
-\item{imm}{A g3 stock object for mature specimens}
+\item{imm}{A g3 stock object for immature specimens}
+
+\item{mat}{A g3 stock object for mature specimens}
 
 \item{mlgg}{maxlengthgroupgrowth for growth of both mature/immature}
 
