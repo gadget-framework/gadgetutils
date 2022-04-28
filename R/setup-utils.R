@@ -171,6 +171,7 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
 #' @param exp_rec Should the recruitment parameters and scalar be exponentiated?
 #' @param exp_init Should the initial abundance parameters and scalar be exponentiated?
+#' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2'
 #' @return A list of g3 actions
 #' @export
 model_actions <- function(imm, 
@@ -182,15 +183,61 @@ model_actions <- function(imm,
                           bound_param = TRUE,
                           parametric_sd = FALSE,
                           exp_rec = FALSE,
-                          exp_init = FALSE){
+                          exp_init = FALSE,
+                          tv_params = c()){
+  
   
   stock <- if(mature) mat else imm
-
+  
   ## Stock specific variables
   if (mature) output_stock <- list() else output_stock <- list(mat)
   
+  ## Helper to create time-varying param references
+  inner_func <- function(tv, ...){
+    if (tv) g3_year_table(...)
+    else g3_stock_param(...)
+  }
+  
+  ## tv_params lookup to lower
+  if (!is.null(tv_params)){ 
+    param_list <- c('linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2')
+    tv_params <- casefold(tv_params)
+    if (!all(tv_params %in% param_list)){
+      stop(paste0("The following parameters are not currently available as time-varying: ", 
+                  paste0(tv_params[!(tv_params %in% param_list)], collapse = ', ')))
+    }
+  }
+  
+  ## Setup parameter references
+  Linf <- inner_func('linf' %in% tv_params, stock, comp_id, 'Linf', bound_param)
+  kk <- inner_func('k' %in% tv_params, stock, comp_id, 'K', bound_param)
+  walpha <- inner_func('walpha' %in% tv_params, stock, comp_id, 'walpha', bound_param)
+  wbeta <- inner_func('wbeta' %in% tv_params, stock, comp_id, 'wbeta', bound_param)
+  bbin <- inner_func('bbin' %in% tv_params, stock, comp_id, 'bbin', bound_param)
+  recl <- inner_func('recl' %in% tv_params, stock, comp_id, 'recl', bound_param)
+  recsd <- inner_func('rec.sd' %in% tv_params, stock, comp_id, 'rec.sd', bound_param)
+  mat_alpha <- inner_func('mat1' %in% tv_params, stock, comp_id, 'mat1', bound_param, TRUE)
+  mat_l50 <- inner_func('mat2' %in% tv_params, stock, comp_id, 'mat2', bound_param)
+  
+  if (init_mode == 0){
+    natm <- inner_func('m' %in% tv_params, stock, comp_id, 'M', bound_param)
+  }else{
+    natm <- inner_func('m' %in% tv_params, stock, 'full', 'M', bound_param)
+  }
+  
+  
+  ## Scale some parameters
+  kk <- gadget3:::f_substitute(~(0.001 * x), list(x = kk))
+  bbin <- gadget3:::f_substitute(~(10 * x), list(x = bbin))
+  mat_alpha <- gadget3:::f_substitute(~(0.001 * x), list(x = mat_alpha))
+  
+  ## Create some variables
+  initvonb <- gadget3:::g3a_initial_vonb(Linf, kk, recl, K_scale = 1)
+  
   ## ---------------------------------------------------------------------------
   ## SETUP ACTIONS
+  ## ---------------------------------------------------------------------------
+  
   stock_actions <- list(
     ## INITIAL CONDITIONS
     g3a_initialconditions_normalparam(stock,
@@ -198,34 +245,21 @@ model_actions <- function(imm,
                                       # initial abundance at age is 1e4 * q
                                       factor_f =
                                         init_abund(imm, mat, comp_id, mature, init_mode, bound_param, exp_init),
-                                      mean_f = init_vonb(stock, comp_id, bound_param),
+                                      mean_f = initvonb,
                                       stddev_f = init_sd(stock, 
                                                          comp_id, 
                                                          parametric = parametric_sd, 
                                                          bound_param),
-                                      alpha_f = g3_stock_param(stock, comp_id, 'walpha', bound_param),
-                                      beta_f = g3_stock_param(stock, comp_id, 'wbeta', bound_param)),
+                                      alpha_f = walpha,
+                                      beta_f = wbeta),
     
     ## NATURAL MORALITY
-    g3a_naturalmortality(stock, g3a_naturalmortality_exp({
-      #bounded_table(stock, 'M', model_params, id = 'species')
-      if (init_mode == 0){
-        g3_stock_param(stock, comp_id, 'M', bound_param)
-      }else{
-        if (init_mode == 1){
-          g3_stock_param(stock, 'full', 'M', bound_param)
-          #g3_stock_table(list(imm, mat), comp_id, 'M', bound_param)
-          }else{
-            #g3_stock_table(stock, 'full', 'M', bound_param)
-            g3_stock_param(stock, 'full', 'M', bound_param)
-          }
-      }
-    })),
+    g3a_naturalmortality(stock, g3a_naturalmortality_exp(natm)),
     
     ## AGING
     g3a_age(stock, output_stocks = output_stock)
   )
-    
+  
   if (!mature){
     
     stock_actions <- c(stock_actions, list(
@@ -233,10 +267,10 @@ model_actions <- function(imm,
       ## RENEWAL
       g3a_renewal_normalparam(imm,
                               factor_f = stock_renewal(imm, id = comp_id, bound_param, exp_rec),
-                              mean_f = init_vonb(imm, comp_id, bound_param),
-                              stddev_f = g3_stock_param(imm, comp_id, 'rec.sd', bound_param),
-                              alpha_f = g3_stock_param(imm, comp_id, 'walpha', bound_param),
-                              beta_f = g3_stock_param(imm, comp_id, 'wbeta', bound_param),
+                              mean_f = initvonb,
+                              stddev_f = recsd,
+                              alpha_f = walpha,
+                              beta_f = wbeta,
                               run_f = gadget3:::f_substitute(
                                 ~cur_step == 1 && age == minage && cur_time > 0,
                                 list(minage = gadget3:::g3_step(~stock_with(imm, imm__minage))))),
@@ -244,33 +278,16 @@ model_actions <- function(imm,
       ## GROWTH AND MATURATION
       g3a_growmature(imm,
                      impl_f = g3a_grow_impl_bbinom(
-                       g3a_grow_lengthvbsimple(g3_stock_param(imm, comp_id, 'Linf', bound_param),
-                                               {gadget3:::f_substitute(~(0.001 * K), 
-                                                                       list(K = g3_stock_param(imm,
-                                                                                               comp_id,
-                                                                                               'K',
-                                                                                               bound_param)))}),      
-                       g3a_grow_weightsimple(g3_stock_param(imm, comp_id, 'walpha', bound_param),
-                                             g3_stock_param(imm, comp_id, 'wbeta', bound_param)),   
-                       beta_f = {gadget3:::f_substitute(~(10 * bbin), 
-                                                        list(bbin = g3_stock_param(imm,
-                                                                                   comp_id,
-                                                                                   'bbin', 
-                                                                                   bound_param)))},
+                       delta_len_f = g3a_grow_lengthvbsimple(Linf, kk),      
+                       delta_wgt_f = g3a_grow_weightsimple(walpha, wbeta),   
+                       beta_f = bbin,
                        maxlengthgroupgrowth = mlgg),
                      maturity_f = g3a_mature_continuous(
-                       alpha = gadget3:::f_substitute(~(0.001 * exp(mat1)),
-                                                      list(mat1 = g3_stock_param(imm,
-                                                                                 comp_id,
-                                                                                 'mat1',
-                                                                                 bound_param))),
-                       l50 = g3_stock_param(imm, comp_id, 'mat2', bound_param)
-                     ),
+                       alpha = mat_alpha,
+                       l50 = mat_l50),
                      output_stocks = list(mat),
                      transition_f = ~cur_time > 0),
-      
       list()
-      
     ))
   }
   else{
@@ -279,19 +296,9 @@ model_actions <- function(imm,
       
       g3a_growmature(mat,
                      impl_f = g3a_grow_impl_bbinom(
-                       g3a_grow_lengthvbsimple(g3_stock_param(mat, comp_id, 'Linf', bound_param),
-                                               {gadget3:::f_substitute(~(0.001 * K), 
-                                                                       list(K = g3_stock_param(mat,
-                                                                                               comp_id,
-                                                                                               'K',
-                                                                                               bound_param)))}),       
-                       g3a_grow_weightsimple(g3_stock_param(mat, comp_id, 'walpha', bound_param),
-                                             g3_stock_param(mat, comp_id, 'wbeta', bound_param)),    
-                       beta_f = {gadget3:::f_substitute(~(10 * bbin), 
-                                                        list(bbin = g3_stock_param(mat,
-                                                                                   comp_id,
-                                                                                   'bbin', 
-                                                                                   bound_param)))},
+                       delta_len_f = g3a_grow_lengthvbsimple(Linf, kk),       
+                       delta_wgt_f = g3a_grow_weightsimple(walpha, wbeta),    
+                       beta_f = bbin,
                        maxlengthgroupgrowth = mlgg)),
       list()
       
