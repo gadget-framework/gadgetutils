@@ -171,7 +171,7 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
 #' @param exp_rec Should the recruitment parameters and scalar be exponentiated?
 #' @param exp_init Should the initial abundance parameters and scalar be exponentiated?
-#' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2'
+#' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m'
 #' @return A list of g3 actions
 #' @export
 model_actions <- function(imm, 
@@ -200,7 +200,7 @@ model_actions <- function(imm,
   
   ## tv_params lookup to lower
   if (!is.null(tv_params)){ 
-    param_list <- c('linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2')
+    param_list <- c('linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m')
     tv_params <- casefold(tv_params)
     if (!all(tv_params %in% param_list)){
       stop(paste0("The following parameters are not currently available as time-varying: ", 
