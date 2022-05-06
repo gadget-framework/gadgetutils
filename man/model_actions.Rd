@@ -39,7 +39,7 @@ model_actions(
 
 \item{exp_init}{Should the initial abundance parameters and scalar be exponentiated?}
 
-\item{tv_params}{Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2'}
+\item{tv_params}{Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m'}
 }
 \value{
 A list of g3 actions
