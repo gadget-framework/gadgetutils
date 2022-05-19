@@ -216,7 +216,7 @@ model_actions <- function(imm,
   bbin <- inner_func('bbin' %in% tv_params, stock, comp_id, 'bbin', bound_param)
   recl <- inner_func('recl' %in% tv_params, stock, comp_id, 'recl', bound_param)
   recsd <- inner_func('rec.sd' %in% tv_params, stock, comp_id, 'rec.sd', bound_param)
-  mat_alpha <- inner_func('mat1' %in% tv_params, stock, comp_id, 'mat1', bound_param, TRUE)
+  mat_alpha <- inner_func('mat1' %in% tv_params, stock, comp_id, 'mat1', bound_param)
   mat_l50 <- inner_func('mat2' %in% tv_params, stock, comp_id, 'mat2', bound_param)
   
   if (init_mode == 0){
