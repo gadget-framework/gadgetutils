@@ -11,7 +11,7 @@ init_abund(
   mature = TRUE,
   init_mode = 1,
   bound_param = TRUE,
-  exponentiate = FALSE
+  exp_params = c()
 )
 }
 \arguments{
@@ -25,7 +25,7 @@ init_abund(
 
 \item{bound_param}{Should parameters be normalised with g3 bounded() ?}
 
-\item{exponentiate}{Should the initial abundance parameters be exponentiated?}
+\item{exp_params}{Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('init','init.scalar','init.f','m'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.}
 }
 \value{
 g3a_initial_abund formula for use in g3a_initialconditions_normalparam()

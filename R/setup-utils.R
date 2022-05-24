@@ -1,3 +1,4 @@
+
 #' Generate parameterised g3a_initial_abund
 #'
 #' @param imm A g3 stock object for immature specimens
@@ -6,7 +7,7 @@
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
 #' @param bound_param Should parameters be normalised with g3 bounded() ?
-#' @param exponentiate Should the initial abundance parameters be exponentiated?
+#' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('init','init.scalar','init.f','m'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
 #' @return g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
 #'
 #' @export
@@ -16,13 +17,18 @@ init_abund <- function(imm,
                        mature = TRUE,
                        init_mode = 1,
                        bound_param = TRUE,
-                       exponentiate = FALSE){
+                       exp_params = c()){
   
   stock <- if (mature) mat else imm
   
   ## Some defaults
   minage <- gadget3:::g3_step(~stock_with(imm, imm__minage))
   p_age <- 1
+  
+  if (!is.null(exp_params)){
+    exp_params <- casefold(exp_params)
+    if ('init.scalar' %in% exp_params) exp_params <- unique(c(exp_params, 'init'))
+  }
   
   ## MODE 0: initialised at equilibrium (using carrying capacity B0) assuming constant natual M (M)
   if (init_mode == 0){
@@ -48,9 +54,9 @@ init_abund <- function(imm,
     ## MODE 1: Initial parameter per age group (across stocks)  
     if (init_mode == 1){
       
-      init <- g3_stock_table(list(imm, mat), comp_id, 'init', bound_param, exponentiate)
-      init_scalar <- g3_stock_param(stock, comp_id, 'init.scalar', bound_param, exponentiate)
-      m_table <- g3_stock_param(stock, 'full', 'M', bound_param)
+      init <- g3_stock_table(list(imm, mat), comp_id, 'init', bound_param, 'init' %in% exp_params)
+      init_scalar <- g3_stock_param(stock, comp_id, 'init.scalar', bound_param, 'init' %in% exp_params)
+      m_table <- g3_stock_param(stock, 'full', 'M', bound_param, 'm' %in% exp_params)
       #m_table <- g3_stock_table(list(imm, mat), comp_id, 'M', bound_param)
     
       ## Proportion mature at age
@@ -73,11 +79,11 @@ init_abund <- function(imm,
     else{
       
       ## MODE 2: Initial parameter per age group per stock
-      init <- g3_stock_table(stock, 'full', 'init', bound_param, exponentiate)
-      init_scalar <- g3_stock_param(stock, 'full', 'init.scalar', bound_param, exponentiate)
+      init <- g3_stock_table(stock, 'full', 'init', bound_param, 'init' %in% exp_params)
+      init_scalar <- g3_stock_param(stock, 'full', 'init.scalar', bound_param, 'init' %in% exp_params)
       
       ## Minimum age taken from immature stock
-      m_table <- g3_stock_param(stock, 'full', 'M', bound_param)
+      m_table <- g3_stock_param(stock, 'full', 'M', bound_param, 'm' %in% exp_params)
       
     }
   }
@@ -87,7 +93,7 @@ init_abund <- function(imm,
     scalar = init_scalar,
     init = init,
     M = m_table,
-    init_F = g3_stock_param(stock, comp_id, 'init.F', bound_param),
+    init_F = g3_stock_param(stock, comp_id, 'init.F', bound_param, 'init.f' %in% exp_params),
     minage = minage,
     p_age = p_age)
   
@@ -169,8 +175,7 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
 #' @param init_mode 
 #' @param bound_param Should parameters be normalised with g3 bounded() ?
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
-#' @param exp_rec Should the recruitment parameters and scalar be exponentiated?
-#' @param exp_init Should the initial abundance parameters and scalar be exponentiated?
+#' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat1','mat2','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
 #' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m'
 #' @return A list of g3 actions
 #' @export
@@ -182,8 +187,7 @@ model_actions <- function(imm,
                           init_mode = 1, 
                           bound_param = TRUE,
                           parametric_sd = FALSE,
-                          exp_rec = FALSE,
-                          exp_init = FALSE,
+                          exp_params = c(),
                           tv_params = c()){
   
   
@@ -200,31 +204,51 @@ model_actions <- function(imm,
   
   ## tv_params lookup to lower
   if (!is.null(tv_params)){ 
-    param_list <- c('linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m')
+    param_list <- c('linf','k','walpha','wbeta','bbin','recl','rec.sd','mat1','mat2','m')
     tv_params <- casefold(tv_params)
     if (!all(tv_params %in% param_list)){
       stop(paste0("The following parameters are not currently available as time-varying: ", 
                   paste0(tv_params[!(tv_params %in% param_list)], collapse = ', ')))
+    }  
+  }
+  
+  ## exp_params lookup to lower
+  if (!is.null(exp_params)){ 
+    param_list <- c('linf','k','bbin','recl','rec.sd','mat1','mat2',
+                    'init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta')
+    if (exp_params == 'all'){
+      exp_params <- param_list
+    }
+    else{
+      exp_params <- casefold(exp_params)
+      
+      ## If exponentiating init or rec, then the respective scalars should be too... and vice versa
+      if ('init.scalar' %in% exp_params) exp_params <- unique(c(exp_params, 'init'))
+      if ('rec.scalar' %in% exp_params) exp_params <- unique(c(exp_params, 'rec'))
+      
+      if (!all(exp_params %in% param_list)){
+        stop(paste0("The following parameters are not currently available to exponentiate: ", 
+                    paste0(exp_params[!(exp_params %in% param_list)], collapse = ', ')))
+      }
     }
   }
   
   ## Setup parameter references
-  Linf <- inner_func('linf' %in% tv_params, stock, comp_id, 'Linf', bound_param)
-  kk <- inner_func('k' %in% tv_params, stock, comp_id, 'K', bound_param)
-  walpha <- inner_func('walpha' %in% tv_params, stock, comp_id, 'walpha', bound_param)
-  wbeta <- inner_func('wbeta' %in% tv_params, stock, comp_id, 'wbeta', bound_param)
-  bbin <- inner_func('bbin' %in% tv_params, stock, comp_id, 'bbin', bound_param)
-  recl <- inner_func('recl' %in% tv_params, stock, comp_id, 'recl', bound_param)
-  recsd <- inner_func('rec.sd' %in% tv_params, stock, comp_id, 'rec.sd', bound_param)
-  mat_alpha <- inner_func('mat1' %in% tv_params, stock, comp_id, 'mat1', bound_param)
-  mat_l50 <- inner_func('mat2' %in% tv_params, stock, comp_id, 'mat2', bound_param)
+  Linf <- inner_func('linf' %in% tv_params, stock, comp_id, 'Linf', bound_param, 'linf' %in% exp_params)
+  kk <- inner_func('k' %in% tv_params, stock, comp_id, 'K', bound_param, 'k' %in% exp_params)
+  walpha <- inner_func('walpha' %in% tv_params, stock, comp_id, 'walpha', bound_param, 'walpha' %in% exp_params)
+  wbeta <- inner_func('wbeta' %in% tv_params, stock, comp_id, 'wbeta', bound_param, 'wbeta' %in% exp_params)
+  bbin <- inner_func('bbin' %in% tv_params, stock, comp_id, 'bbin', bound_param, 'bbin' %in% exp_params)
+  recl <- inner_func('recl' %in% tv_params, stock, comp_id, 'recl', bound_param, 'recl' %in% exp_params)
+  recsd <- inner_func('rec.sd' %in% tv_params, stock, comp_id, 'rec.sd', bound_param, 'rec.sd' %in% exp_params)
+  mat_alpha <- inner_func('mat1' %in% tv_params, stock, comp_id, 'mat1', bound_param, 'mat1' %in% exp_params)
+  mat_l50 <- inner_func('mat2' %in% tv_params, stock, comp_id, 'mat2', bound_param, 'mat2' %in% exp_params)
   
   if (init_mode == 0){
-    natm <- inner_func('m' %in% tv_params, stock, comp_id, 'M', bound_param)
+    natm <- inner_func('m' %in% tv_params, stock, comp_id, 'M', bound_param, 'm' %in% exp_params)
   }else{
-    natm <- inner_func('m' %in% tv_params, stock, 'full', 'M', bound_param)
+    natm <- inner_func('m' %in% tv_params, stock, 'full', 'M', bound_param, 'm' %in% exp_params)
   }
-  
   
   ## Scale some parameters
   kk <- gadget3:::f_substitute(~(0.001 * x), list(x = kk))
@@ -244,7 +268,7 @@ model_actions <- function(imm,
                                       # NB: area & age factor together (gadget2 just multiplied them)
                                       # initial abundance at age is 1e4 * q
                                       factor_f =
-                                        init_abund(imm, mat, comp_id, mature, init_mode, bound_param, exp_init),
+                                        init_abund(imm, mat, comp_id, mature, init_mode, bound_param, exp_params),
                                       mean_f = initvonb,
                                       stddev_f = init_sd(stock, 
                                                          comp_id, 
@@ -266,7 +290,7 @@ model_actions <- function(imm,
       
       ## RENEWAL
       g3a_renewal_normalparam(imm,
-                              factor_f = stock_renewal(imm, id = comp_id, bound_param, exp_rec),
+                              factor_f = stock_renewal(imm, id = comp_id, bound_param, 'rec' %in% exp_params),
                               mean_f = initvonb,
                               stddev_f = recsd,
                               alpha_f = walpha,
@@ -306,3 +330,6 @@ model_actions <- function(imm,
   }
   return(stock_actions)
 }
+
+
+

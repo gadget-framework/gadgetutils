@@ -13,8 +13,7 @@ model_actions(
   init_mode = 1,
   bound_param = TRUE,
   parametric_sd = FALSE,
-  exp_rec = FALSE,
-  exp_init = FALSE,
+  exp_params = c(),
   tv_params = c()
 )
 }
@@ -35,9 +34,7 @@ model_actions(
 
 \item{parametric_sd}{Is the initial conditions stddev parameterised, or a table by age?}
 
-\item{exp_rec}{Should the recruitment parameters and scalar be exponentiated?}
-
-\item{exp_init}{Should the initial abundance parameters and scalar be exponentiated?}
+\item{exp_params}{Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat1','mat2','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.}
 
 \item{tv_params}{Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m'}
 }
