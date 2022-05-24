@@ -296,7 +296,7 @@ model_actions <- function(imm,
                               alpha_f = walpha,
                               beta_f = wbeta,
                               run_f = gadget3:::f_substitute(
-                                ~cur_step == 1 && age == minage && cur_time > 0,
+                                ~cur_step == 1 && age == minage && cur_time > 0 && !cur_year_projection,
                                 list(minage = gadget3:::g3_step(~stock_with(imm, imm__minage))))),
       
       ## GROWTH AND MATURATION
