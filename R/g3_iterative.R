@@ -336,25 +336,3 @@ tabulate_SS <- function(lik.out, grouping){
   return(list(SS = SS, SS_norm = SS_norm))
   
 }
-
-#' @export
-g3_tmb_parscale <- function (parameters) {
-  # Temporary location - should be in gadget3
-  # Get all parameters we're thinking of optimising
-  p <- parameters[
-    !is.na(parameters[['parscale']]) &
-      parameters$optimise, c('switch', 'value', 'parscale')]
-  
-  # Get the length of all values
-  p$val_len <- vapply(p[['value']], length, integer(1))
-  
-  # Turn into a list with same dimensions as each value
-  out <- structure(
-    lapply(seq_len(nrow(p)), function (i) rep(p[i, 'parscale'], p[i, 'val_len'])),
-    names = gadget3:::cpp_escape_varname(p$switch))
-  
-  # Unlist the result to condense list back to vector
-  unlist(out)
-}
-
-
