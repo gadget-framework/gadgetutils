@@ -17,6 +17,10 @@ g3_retro <- function(dir, model, params, num.years = 5){
     new_params <- attr(model, 'parameter_template')
     new_params$value <- params$value[names(new_params$value)]
     new_params$optimise <- params[match(new_params$switch, params$switch), 'optimise']
+
+    if (!('project_years' %in% rownames(new_params))) {
+        stop("No 'project_years' parameter, cannot apply g3_retro. Make sure g3a_time is included in your model, with project_years as to the default value")
+    }
     new_params['project_years', 'value'] <- 0 - i
     
     retro_models[[i]] <- list()
