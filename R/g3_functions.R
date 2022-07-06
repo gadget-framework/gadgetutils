@@ -18,10 +18,10 @@ g3_retro <- function(dir, model, params, num.years = 5){
     new_params$value <- params$value[names(new_params$value)]
     new_params$optimise <- params[match(new_params$switch, params$switch), 'optimise']
 
-    if (!('project_years' %in% rownames(new_params))) {
-        stop("No 'project_years' parameter, cannot apply g3_retro. Make sure g3a_time is included in your model, with project_years as to the default value")
+    if (!('retro_years' %in% rownames(new_params))) {
+        stop("No 'retro_years' parameter, cannot apply g3_retro. Make sure g3a_time is included in your model, with retro_years as to the default value")
     }
-    new_params['project_years', 'value'] <- 0 - i
+    new_params['retro_years', 'value'] <- i
     
     retro_models[[i]] <- list()
     retro_models[[i]]$model <- model
@@ -38,7 +38,7 @@ g3_retro <- function(dir, model, params, num.years = 5){
   run_func <- function(param, tmb_model){
     
     ## Compile objective function
-    # NB: We need to recreate the obj_fun to use new unoptimised parameters, i.e. project_years.
+    # NB: We need to recreate the obj_fun to use new unoptimised parameters, i.e. retro_years.
     obj_fun <- g3_tmb_adfun(tmb_model, param)
     
     ## Optimise model
