@@ -154,9 +154,9 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
   
   if (parametric){
     gadget3:::g3a_initial_sigma(
-      g3_stock_param(stock, 'species', 'initial_sigma_alpha', FALSE),
-      g3_stock_param(stock, 'species', 'initial_sigma_beta', FALSE),
-      g3_stock_param(stock, 'species', 'initial_sigma_gamma', FALSE),
+      g3_stock_param(stock, id, 'initial_sigma_alpha', FALSE),
+      g3_stock_param(stock, id, 'initial_sigma_beta', FALSE),
+      g3_stock_param(stock, id, 'initial_sigma_gamma', FALSE),
       init_vonb(stock, id, bound_param)
     )
   }
