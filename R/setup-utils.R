@@ -18,6 +18,29 @@ init_abund <- function(imm,
                        init_mode = 1,
                        bound_param = TRUE,
                        exp_params = c()){
+  g3a_initial_abund <- function(scalar,
+                                init,
+                                M,
+                                init_F,
+                                minage = 0,
+                                p_age = 1){
+    gadget3:::f_substitute(
+      ~scalar * init * exp(-1 * (M + init_F) *
+                             (age - minage)) * p_age,
+      list(scalar = scalar,
+           init = init,
+           M = M,
+           init_F = init_F,
+           minage = minage,
+           p_age = p_age)
+    )
+  }
+
+  g3a_initial_ageprop <- function(alpha, a50){
+    gadget3:::f_substitute(
+      ~bounded(-1*alpha*(age - a50),0,1),
+      list(alpha = alpha, a50 = a50))
+  }
   
   stock <- if (mature) mat else imm
   
@@ -61,7 +84,7 @@ init_abund <- function(imm,
     
       ## Proportion mature at age
       p_age <- 
-        gadget3:::g3a_initial_ageprop(g3_stock_param(imm,
+        g3a_initial_ageprop(g3_stock_param(imm,
                                                     comp_id,
                                                     'mat_initial_alpha',
                                                     bound_param),
@@ -89,7 +112,7 @@ init_abund <- function(imm,
   }
   
   ## Get the initial abundance
-  gadget3:::g3a_initial_abund(
+  g3a_initial_abund(
     scalar = init_scalar,
     init = init,
     M = m_table,
@@ -151,9 +174,18 @@ stock_renewal <- function(stock,
 #' @return A formula suitable for g3a_initialconditions_normalparam()
 #' @export
 init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
+  g3a_initial_sigma <- function(alpha, beta, gamma, mean_l){
+    gadget3:::f_substitute(
+      ~mean_l * ( alpha + beta/age + gamma * age),
+      list(alpha = alpha,
+           beta = beta,
+           gamma = gamma,
+           mean_l=mean_l)
+    )
+  }
   
   if (parametric){
-    gadget3:::g3a_initial_sigma(
+    g3a_initial_sigma(
       g3_stock_param(stock, id, 'initial_sigma_alpha', FALSE),
       g3_stock_param(stock, id, 'initial_sigma_beta', FALSE),
       g3_stock_param(stock, id, 'initial_sigma_gamma', FALSE),
