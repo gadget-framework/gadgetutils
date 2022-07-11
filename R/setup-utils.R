@@ -122,22 +122,6 @@ init_abund <- function(imm,
   
 }
 
-#' Generate parameterised version of g3a_initial_vonb()
-#'
-#' @param stock A g3 stock object
-#' @param id Part of the stock name to use in parameter name
-#' @param bound_param Should this parameter be normalised with g3 bounded() ?
-#' @return g3a_initial_vonb formula
-#' @export
-init_vonb <- function(stock, id = 'species', bound_param = TRUE){
-  
-  gadget3:::g3a_initial_vonb(
-    recl = g3_stock_param(stock, id, 'recl', bound_param), 
-    Linf = g3_stock_param(stock, id, 'Linf', bound_param),
-    K = g3_stock_param(stock, id, 'K', bound_param))
-  
-}
-
 #' Generate paramerterised stock renewal factor
 #'
 #' @param stock A g3 stock object
@@ -189,7 +173,7 @@ init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
       g3_stock_param(stock, id, 'initial_sigma_alpha', FALSE),
       g3_stock_param(stock, id, 'initial_sigma_beta', FALSE),
       g3_stock_param(stock, id, 'initial_sigma_gamma', FALSE),
-      init_vonb(stock, id, bound_param)
+      g3a_renewal_vonb(by_stock = id),
     )
   }
   else{
@@ -288,7 +272,7 @@ model_actions <- function(imm,
   mat_alpha <- gadget3:::f_substitute(~(0.001 * x), list(x = mat_alpha))
   
   ## Create some variables
-  initvonb <- gadget3:::g3a_initial_vonb(Linf, kk, recl, K_scale = 1)
+  initvonb <- g3a_renewal_vonb(Linf = Linf, K = kk, recl = recl)
   
   ## ---------------------------------------------------------------------------
   ## SETUP ACTIONS
