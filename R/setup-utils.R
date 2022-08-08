@@ -15,9 +15,11 @@ init_abund <- function(imm,
                        mat,
                        comp_id = 'species',
                        mature = TRUE,
-                       init_mode = 1,
-                       bound_param = TRUE,
+                       init_mode = 2,
+                       bound_param = FALSE,
                        exp_params = c()){
+  
+  ## Helpers from gadget3
   g3a_initial_abund <- function(scalar,
                                 init,
                                 M,
@@ -41,6 +43,8 @@ init_abund <- function(imm,
       ~bounded(-1*alpha*(age - a50),0,1),
       list(alpha = alpha, a50 = a50))
   }
+  
+  ## ---------------------------------------------------------------------------
   
   stock <- if (mature) mat else imm
   
@@ -132,7 +136,7 @@ init_abund <- function(imm,
 #' @export
 stock_renewal <- function(stock, 
                           id = 'species', 
-                          bound_param = TRUE, 
+                          bound_param = FALSE, 
                           exponentiate = FALSE){
 
   gadget3:::f_substitute(~scalar * renew,
@@ -157,7 +161,9 @@ stock_renewal <- function(stock,
 #' @param bound_param Should this parameter be normalised with g3 bounded() ?
 #' @return A formula suitable for g3a_initialconditions_normalparam()
 #' @export
-init_sd <- function(stock, id, parametric = TRUE, bound_param = TRUE){
+init_sd <- function(stock, id, parametric = FALSE, bound_param = FALSE){
+  
+  ## Helper from gadget3
   g3a_initial_sigma <- function(alpha, beta, gamma, mean_l){
     gadget3:::f_substitute(
       ~mean_l * ( alpha + beta/age + gamma * age),
@@ -200,8 +206,8 @@ model_actions <- function(imm,
                           mlgg = 15,
                           mature = TRUE, 
                           comp_id = 'species', 
-                          init_mode = 1, 
-                          bound_param = TRUE,
+                          init_mode = 2, 
+                          bound_param = FALSE,
                           parametric_sd = FALSE,
                           exp_params = c(),
                           tv_params = c()){
