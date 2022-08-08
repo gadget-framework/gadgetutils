@@ -37,7 +37,7 @@ init_abund <- function(imm,
            p_age = p_age)
     )
   }
-
+  
   g3a_initial_ageprop <- function(alpha, a50){
     gadget3:::f_substitute(
       ~bounded(-1*alpha*(age - a50),0,1),
@@ -54,15 +54,17 @@ init_abund <- function(imm,
   
   if (!is.null(exp_params)){
     exp_params <- casefold(exp_params)
-    if ('init.scalar' %in% exp_params) exp_params <- unique(c(exp_params, 'init'))
+    if (sum(c('init', 'init.scalar') %in% exp_params) == 1){
+      exp_params <- unique(c(exp_params, 'init', 'init.scalar'))
+    }
   }
   
   ## MODE 0: initialised at equilibrium (using carrying capacity B0) assuming constant natual M (M)
   if (init_mode == 0){
     
     init <- 1
-    m_table <- g3_stock_param(stock, comp_id, 'M', bound_param)
-    prop_mat0 <- g3_stock_param(stock, comp_id, 'prop_mat0', bound_param)
+    m_table <- setup_g3_param('M', by_stock = TRUE, exp_params = exp_params)
+    prop_mat0 <- setup_g3_param('prop_mat0', by_stock = comp_id, exp_params = exp_params)
     
     if(!mature){
       prop_mat0 <- gadget3:::f_substitute(~1-prop_mat0, list(prop_mat0 = prop_mat0))
@@ -72,7 +74,7 @@ init_abund <- function(imm,
     init_scalar <- gadget3:::f_substitute(
       ~p0 * B0 * (1-exp(-1*M))/(1-exp(-1*maxage*M)),
       list(p0 = prop_mat0,
-           B0 = g3_stock_param(stock, comp_id, 'B0', bound_param),
+           B0 = setup_g3_param('B0', by_stock = comp_id, exp_params = exp_params),
            M = m_table,
            maxage = gadget3:::g3_step(~stock_with(mat, mat__minage)))
     )
@@ -81,21 +83,31 @@ init_abund <- function(imm,
     ## MODE 1: Initial parameter per age group (across stocks)  
     if (init_mode == 1){
       
-      init <- g3_stock_table(list(imm, mat), comp_id, 'init', bound_param, 'init' %in% exp_params)
-      init_scalar <- g3_stock_param(stock, comp_id, 'init.scalar', bound_param, 'init' %in% exp_params)
-      m_table <- g3_stock_param(stock, 'full', 'M', bound_param, 'm' %in% exp_params)
-      #m_table <- g3_stock_table(list(imm, mat), comp_id, 'M', bound_param)
-    
+      init <- setup_g3_params('init', 
+                              by_stock = comp_id, 
+                              exp_params = exp_params,
+                              by_age = TRUE)
+      
+      init_scalar <- setup_g3_param('init.scalar', 
+                                    by_stock = comp_id, 
+                                    exp_params = exp_params)
+      
+      #m_table <- g3_parameterized('M', 
+      #                            by_stock = TRUE, 
+      #                            exponentiate = 'm' %in% exp_params)
+      
+      m_table <- setup_g3_param('M', 
+                                by_stock = TRUE,
+                                exp_params = exp_params)
+      
       ## Proportion mature at age
       p_age <- 
-        g3a_initial_ageprop(g3_stock_param(imm,
-                                                    comp_id,
-                                                    'mat_initial_alpha',
-                                                    bound_param),
-                                      g3_stock_param(imm,
-                                                    comp_id, 
-                                                    'mat_initial_a50',
-                                                    bound_param))
+        g3a_initial_ageprop(setup_g3_param('mat_initial_alpha',
+                                           by_stock = comp_id,
+                                           exp_params = exp_params),
+                            setup_g3_param('mat_initial_a50',
+                                           by_stock = comp_id,
+                                           exp_params = exp_params))
       
       ## Invert for immature stock
       if(!mature){
@@ -106,11 +118,19 @@ init_abund <- function(imm,
     else{
       
       ## MODE 2: Initial parameter per age group per stock
-      init <- g3_stock_table(stock, 'full', 'init', bound_param, 'init' %in% exp_params)
-      init_scalar <- g3_stock_param(stock, 'full', 'init.scalar', bound_param, 'init' %in% exp_params)
+      init <- setup_g3_param('init', 
+                             by_stock = TRUE, 
+                             exp_params = exp_params,
+                             by_age = TRUE)
+      
+      init_scalar <- setup_g3_param('init.scalar', 
+                                    by_stock = TRUE,
+                                    exp_params = exp_params)
       
       ## Minimum age taken from immature stock
-      m_table <- g3_stock_param(stock, 'full', 'M', bound_param, 'm' %in% exp_params)
+      m_table <- setup_g3_param('M', 
+                                by_stock = TRUE,
+                                exp_params = exp_params)
       
     }
   }
@@ -120,7 +140,9 @@ init_abund <- function(imm,
     scalar = init_scalar,
     init = init,
     M = m_table,
-    init_F = g3_stock_param(stock, comp_id, 'init.F', bound_param, 'init.f' %in% exp_params),
+    init_F = setup_g3_param('init.F', 
+                            by_stock = comp_id, 
+                            exp_params = exp_params),
     minage = minage,
     p_age = p_age)
   
@@ -138,19 +160,17 @@ stock_renewal <- function(stock,
                           id = 'species', 
                           bound_param = FALSE, 
                           exponentiate = FALSE){
-
-  gadget3:::f_substitute(~scalar * renew,
-                         list(scalar = g3_stock_param(stock,
-                                                      id,
-                                                      'rec.scalar', 
-                                                      bound_param,
-                                                      exponentiate),
-                              renew = g3_year_table(stock,
-                                                    id, 
-                                                    'rec',
-                                                    bound_param,
-                                                    exponentiate)))
   
+  ## String identifier for exponentiated parameters
+  suffix <- ifelse(exponentiate, '_exp', '')
+  
+  gadget3:::f_substitute(~scalar * renew,
+                         list(scalar = g3_parameterized(paste0('rec.scalar', suffix),
+                                                        by_stock = id,
+                                                        exponentiate = exponentiate),
+                              renew = g3_parameterized(paste0('rec', suffix),
+                                                       by_stock = id,
+                                                       exponentiate = exponentiate)))
 }
 
 #' Generate parameterised initial conditions 
@@ -176,14 +196,14 @@ init_sd <- function(stock, id, parametric = FALSE, bound_param = FALSE){
   
   if (parametric){
     g3a_initial_sigma(
-      g3_stock_param(stock, id, 'initial_sigma_alpha', FALSE),
-      g3_stock_param(stock, id, 'initial_sigma_beta', FALSE),
-      g3_stock_param(stock, id, 'initial_sigma_gamma', FALSE),
+      g3_parameterized('initial_sigma_alpha', by_stock = id),
+      g3_parameterized('initial_sigma_beta', by_stock = id),
+      g3_parameterized('initial_sigma_gamma', by_stock = id),
       g3a_renewal_vonb(by_stock = id),
     )
   }
   else{
-    g3_stock_table(stock, 'full', 'init.sd', bound_param = FALSE)
+    g3_parameterized('init.sd', by_stock = TRUE, by_age = TRUE)
   }
 }
 
@@ -218,12 +238,6 @@ model_actions <- function(imm,
   ## Stock specific variables
   if (mature) output_stock <- list() else output_stock <- list(mat)
   
-  ## Helper to create time-varying param references
-  inner_func <- function(tv, ...){
-    if (tv) g3_year_table(...)
-    else g3_stock_param(...)
-  }
-  
   ## tv_params lookup to lower
   if (!is.null(tv_params)){ 
     param_list <- c('linf','k','walpha','wbeta','bbin','recl','rec.sd','mat1','mat2','m')
@@ -245,8 +259,8 @@ model_actions <- function(imm,
       exp_params <- casefold(exp_params)
       
       ## If exponentiating init or rec, then the respective scalars should be too... and vice versa
-      if ('init.scalar' %in% exp_params) exp_params <- unique(c(exp_params, 'init'))
-      if ('rec.scalar' %in% exp_params) exp_params <- unique(c(exp_params, 'rec'))
+      if (sum(c('init','init.scalar') %in% exp_params) == 1) exp_params <- unique(c(exp_params, 'init', 'init.scalar'))
+      if (sum(c('rec','rec.scalar') %in% exp_params) == 1) exp_params <- unique(c(exp_params, 'rec', 'rec.scalar'))
       
       if (!all(exp_params %in% param_list)){
         stop(paste0("The following parameters are not currently available to exponentiate: ", 
@@ -256,26 +270,16 @@ model_actions <- function(imm,
   }
   
   ## Setup parameter references
-  Linf <- inner_func('linf' %in% tv_params, stock, comp_id, 'Linf', bound_param, 'linf' %in% exp_params)
-  kk <- inner_func('k' %in% tv_params, stock, comp_id, 'K', bound_param, 'k' %in% exp_params)
-  walpha <- inner_func('walpha' %in% tv_params, stock, comp_id, 'walpha', bound_param, 'walpha' %in% exp_params)
-  wbeta <- inner_func('wbeta' %in% tv_params, stock, comp_id, 'wbeta', bound_param, 'wbeta' %in% exp_params)
-  bbin <- inner_func('bbin' %in% tv_params, stock, comp_id, 'bbin', bound_param, 'bbin' %in% exp_params)
-  recl <- inner_func('recl' %in% tv_params, stock, comp_id, 'recl', bound_param, 'recl' %in% exp_params)
-  recsd <- inner_func('rec.sd' %in% tv_params, stock, comp_id, 'rec.sd', bound_param, 'rec.sd' %in% exp_params)
-  mat_alpha <- inner_func('mat1' %in% tv_params, stock, comp_id, 'mat1', bound_param, 'mat1' %in% exp_params)
-  mat_l50 <- inner_func('mat2' %in% tv_params, stock, comp_id, 'mat2', bound_param, 'mat2' %in% exp_params)
-  
-  if (init_mode == 0){
-    natm <- inner_func('m' %in% tv_params, stock, comp_id, 'M', bound_param, 'm' %in% exp_params)
-  }else{
-    natm <- inner_func('m' %in% tv_params, stock, 'full', 'M', bound_param, 'm' %in% exp_params)
-  }
-  
-  ## Scale some parameters
-  kk <- gadget3:::f_substitute(~(0.001 * x), list(x = kk))
-  bbin <- gadget3:::f_substitute(~(10 * x), list(x = bbin))
-  mat_alpha <- gadget3:::f_substitute(~(0.001 * x), list(x = mat_alpha))
+  Linf <- setup_g3_param('Linf', comp_id, tv_params, exp_params)
+  kk <- setup_g3_param('K', comp_id, tv_params, exp_params, scale = 0.001)
+  walpha <- setup_g3_param('walpha', comp_id, tv_params, exp_params)
+  wbeta <- setup_g3_param('wbeta', comp_id, tv_params, exp_params)
+  bbin <- setup_g3_param('bbin', comp_id, tv_params, exp_params, scale = 10)
+  recl <- setup_g3_param('recl', comp_id, tv_params, exp_params)
+  recsd <- setup_g3_param('rec.sd', comp_id, tv_params, exp_params)
+  mat_alpha <- setup_g3_param('mat1', comp_id, tv_params, exp_params, scale = 0.001)
+  mat_l50 <- setup_g3_param('mat2', comp_id, tv_params, exp_params)
+  natm <- setup_g3_param('M', TRUE, tv_params, exp_params)
   
   ## Create some variables
   initvonb <- g3a_renewal_vonb(Linf = Linf, K = kk, recl = recl)
@@ -353,5 +357,19 @@ model_actions <- function(imm,
   return(stock_actions)
 }
 
-
-
+## Helper for g3_parameterized that modifies the name of a parameter if it is being exponentiated
+setup_g3_param <- function(name, 
+                           by_stock, 
+                           tv_params = c(), 
+                           exp_params = c(), ...){
+  
+  ## Suffix for exponentiated parameters
+  suffix <- ifelse(tolower(name) %in% exp_params, '_exp', '')
+  
+  g3_parameterized(paste0(name, suffix),
+                   by_stock = by_stock,
+                   by_year = ifelse(tolower(name) %in% tv_params, TRUE, FALSE),
+                   exponentiate = ifelse(tolower(name) %in% exp_params, TRUE, FALSE),
+                   ...)
+  
+}
