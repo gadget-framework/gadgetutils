@@ -4,7 +4,7 @@
 \alias{init_sd}
 \title{Generate parameterised initial conditions}
 \usage{
-init_sd(stock, id, parametric = TRUE, bound_param = TRUE)
+init_sd(stock, id, parametric = FALSE)
 }
 \arguments{
 \item{stock}{A g3 stock object}
@@ -12,8 +12,6 @@ init_sd(stock, id, parametric = TRUE, bound_param = TRUE)
 \item{id}{Part of the stock name to use in parameter name}
 
 \item{parametric}{Is the initial conditions stddev parameterised, or a table by age?}
-
-\item{bound_param}{Should this parameter be normalised with g3 bounded() ?}
 }
 \value{
 A formula suitable for g3a_initialconditions_normalparam()

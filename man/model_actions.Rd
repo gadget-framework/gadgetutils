@@ -10,8 +10,7 @@ model_actions(
   mlgg = 15,
   mature = TRUE,
   comp_id = "species",
-  init_mode = 1,
-  bound_param = TRUE,
+  init_mode = 2,
   parametric_sd = FALSE,
   exp_params = c(),
   tv_params = c()
@@ -29,8 +28,6 @@ model_actions(
 \item{comp_id}{Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature}
 
 \item{init_mode}{}
-
-\item{bound_param}{Should parameters be normalised with g3 bounded() ?}
 
 \item{parametric_sd}{Is the initial conditions stddev parameterised, or a table by age?}
 

@@ -6,7 +6,6 @@
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
-#' @param bound_param Should parameters be normalised with g3 bounded() ?
 #' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('init','init.scalar','init.f','m'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
 #' @return g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
 #'
@@ -16,7 +15,6 @@ init_abund <- function(imm,
                        comp_id = 'species',
                        mature = TRUE,
                        init_mode = 2,
-                       bound_param = FALSE,
                        exp_params = c()){
   
   ## Helpers from gadget3
@@ -152,13 +150,11 @@ init_abund <- function(imm,
 #'
 #' @param stock A g3 stock object
 #' @param id Part of the stock name to use in parameter name
-#' @param bound_param Should this parameter be normalised with g3 bounded() ?
 #' @param exponentiate Should the renewal parameters be exponentiated?
 #' @return "scalar * renew" formula, parameterised for given stock
 #' @export
 stock_renewal <- function(stock, 
                           id = 'species', 
-                          bound_param = FALSE, 
                           exponentiate = FALSE){
   
   ## String identifier for exponentiated parameters
@@ -179,10 +175,9 @@ stock_renewal <- function(stock,
 #' @param stock A g3 stock object
 #' @param id Part of the stock name to use in parameter name
 #' @param parametric Is the initial conditions stddev parameterised, or a table by age?
-#' @param bound_param Should this parameter be normalised with g3 bounded() ?
 #' @return A formula suitable for g3a_initialconditions_normalparam()
 #' @export
-init_sd <- function(stock, id, parametric = FALSE, bound_param = FALSE){
+init_sd <- function(stock, id, parametric = FALSE){
   
   ## Helper from gadget3
   g3a_initial_sigma <- function(alpha, beta, gamma, mean_l){
@@ -216,7 +211,6 @@ init_sd <- function(stock, id, parametric = FALSE, bound_param = FALSE){
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param init_mode 
-#' @param bound_param Should parameters be normalised with g3 bounded() ?
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
 #' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat1','mat2','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
 #' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m'
@@ -228,7 +222,6 @@ model_actions <- function(imm,
                           mature = TRUE, 
                           comp_id = 'species', 
                           init_mode = 2, 
-                          bound_param = FALSE,
                           parametric_sd = FALSE,
                           exp_params = c(),
                           tv_params = c()){
@@ -295,12 +288,11 @@ model_actions <- function(imm,
                                       # NB: area & age factor together (gadget2 just multiplied them)
                                       # initial abundance at age is 1e4 * q
                                       factor_f =
-                                        init_abund(imm, mat, comp_id, mature, init_mode, bound_param, exp_params),
+                                        init_abund(imm, mat, comp_id, mature, init_mode, exp_params),
                                       mean_f = initvonb,
                                       stddev_f = init_sd(stock, 
                                                          comp_id, 
-                                                         parametric = parametric_sd, 
-                                                         bound_param),
+                                                         parametric = parametric_sd),
                                       alpha_f = walpha,
                                       beta_f = wbeta),
     
@@ -317,7 +309,7 @@ model_actions <- function(imm,
       
       ## RENEWAL
       g3a_renewal_normalparam(imm,
-                              factor_f = stock_renewal(imm, id = comp_id, bound_param, 'rec' %in% exp_params),
+                              factor_f = stock_renewal(imm, id = comp_id, 'rec' %in% exp_params),
                               mean_f = initvonb,
                               stddev_f = recsd,
                               alpha_f = walpha,

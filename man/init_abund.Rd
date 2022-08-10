@@ -9,8 +9,7 @@ init_abund(
   mat,
   comp_id = "species",
   mature = TRUE,
-  init_mode = 1,
-  bound_param = TRUE,
+  init_mode = 2,
   exp_params = c()
 )
 }
@@ -22,8 +21,6 @@ init_abund(
 \item{mature}{Generate actions for mature (TRUE) or immature (FALSE) stock}
 
 \item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
-
-\item{bound_param}{Should parameters be normalised with g3 bounded() ?}
 
 \item{exp_params}{Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('init','init.scalar','init.f','m'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.}
 }
