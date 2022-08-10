@@ -168,8 +168,9 @@ stock_renewal <- function(stock,
                          list(scalar = g3_parameterized(paste0('rec.scalar', suffix),
                                                         by_stock = id,
                                                         exponentiate = exponentiate),
-                              renew = g3_parameterized(paste0('rec', suffix),
+                              renew = g3_parameterized(paste0('rec', suffix), 
                                                        by_stock = id,
+                                                       by_year = TRUE,
                                                        exponentiate = exponentiate)))
 }
 
