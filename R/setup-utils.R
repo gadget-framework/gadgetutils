@@ -153,18 +153,19 @@ init_abund <- function(imm,
 stock_renewal <- function(stock, 
                           id = 'species', 
                           exponentiate = FALSE){
-   
+  
   ## String identifier for exponentiated parameters
   suffix <- ifelse(exponentiate, '_exp', '')
   
-  gadget3:::f_substitute(~scalar * renew,
-                         list(scalar = g3_parameterized(paste0('rec.scalar', suffix),
-                                                        by_stock = id,
-                                                        exponentiate = exponentiate),
-                              renew = g3_parameterized(paste0('rec', suffix), 
-                                                       by_stock = id,
-                                                       by_year = TRUE,
-                                                       exponentiate = exponentiate)))
+  g3_parameterized(name = paste0('rec', suffix),
+                   by_stock = id,
+                   by_year = TRUE,
+                   exponentiate = exponentiate,
+                   scale = 
+                     g3_parameterized(name = paste0('rec.scalar', suffix),
+                                      by_stock = id,
+                                      exponentiate = exponentiate))
+  
 }
 
 #' Generate parameterised initial conditions 
@@ -312,7 +313,7 @@ model_actions <- function(imm,
       
       ## RENEWAL
       g3a_renewal_normalparam(imm,
-                              factor_f = stock_renewal(imm, id = comp_id, exp_rec),
+                              factor_f = stock_renewal(imm, id = list(imm, mat), exp_rec),
                               mean_f = initvonb,
                               stddev_f = recsd,
                               alpha_f = walpha,
