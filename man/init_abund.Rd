@@ -10,7 +10,9 @@ init_abund(
   comp_id = "species",
   mature = TRUE,
   init_mode = 2,
-  exp_params = c()
+  exp_init = FALSE,
+  exp_init_f = FALSE,
+  naturalmortality = g3_parameterized("M", by_stock = TRUE)
 )
 }
 \arguments{
@@ -22,7 +24,11 @@ init_abund(
 
 \item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
 
-\item{exp_params}{Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('init','init.scalar','init.f','m'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.}
+\item{exp_init}{Logical, whether the initial parameters should be exponentiated}
+
+\item{exp_init_f}{Logical, whether the parameter 'init.f' should be exponentiated}
+
+\item{naturalmortality}{A g3 parameter for natural mortality}
 }
 \value{
 g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
