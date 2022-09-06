@@ -1,18 +1,14 @@
 #' @export
-write.g3.param <- function(params, gd, file_name){
+write.g3.param <- function(params, gd, file_name, add_parscale = TRUE){
   
-  ## Transform any bounded parameters (assuming this is more useful to see)
-  params <- transform_bounded(params)
+  ## Add parscale if used
+  if (add_parscale) params <- g3_add_parscale(params)
   
   ## Modify columns
   params$value <- unlist(params$value)
   params$optimise <- as.numeric(params$optimise)
   params$random <- as.numeric(params$random)
   params[params$type == '', 'type'] <- '.'
-  
-  if ('transformed_value' %in% names(params)){
-    params$transformed_value <- unlist(params$transformed_value)
-  }
   
   write.g3.file(params, gd, file_name)
   
@@ -54,12 +50,15 @@ read.g3.param <- function(gd, file.name){
   params$value <- as.list(params$value)
   names(params$value) <- params$switch
   
-  if ('transformed_value' %in% names(params)){
-    params$transformed_value <- as.list(params$transformed_value)
-    names(params$transformed_value) <- params$switch
-  }
-  
   row.names(params) <- params$switch
   return(params)
   
+}
+
+#' @export
+g3_add_parscale <- function(parameters){
+  par <- g3_tmb_parscale(parameters)
+  out <- utils::relist(par, unclass(parameters$value[parameters$optimise]))
+  parameters$parscale[match(names(out), parameters$switch)] <- out
+  return(parameters)
 }

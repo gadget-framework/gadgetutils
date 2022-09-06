@@ -42,7 +42,8 @@ g3_iterative <- function(gd,
   for (i in names(init_params$params)){
     write.g3.param(init_params$params[[i]], 
                    out_path, 
-                   paste0('params.init.stage1.', i))
+                   paste0('params.init.stage1.', i),
+                   add_parscale = use_parscale)
   }
   
   ## -------------- Run first stage of iterative re-weighting  -----------------
@@ -65,7 +66,8 @@ g3_iterative <- function(gd,
     attr(stage1_params[[i]], 'summary') <- NULL
     write.g3.param(stage1_params[[i]],
                    out_path,
-                   paste0('params.out.stage1.', i))
+                   paste0('params.out.stage1.', i),
+                   add_parscale = use_parscale)
   }
   
   
@@ -85,7 +87,8 @@ g3_iterative <- function(gd,
   for (i in names(int_params)){
     write.g3.param(int_params[[i]],
                    out_path,
-                   paste0('params.init.stage2.', i))
+                   paste0('params.init.stage2.', i),
+                   add_parscale = use_parscale)
   }
   
   ## ----------- Second round of re-weighting ----------------------------------
@@ -110,7 +113,8 @@ g3_iterative <- function(gd,
     attr(stage2_params[[i]], 'summary') <- NULL
     write.g3.param(stage2_params[[i]],
                    out_path,
-                   paste0('params.out.stage2.', i))
+                   paste0('params.out.stage2.', i),
+                   add_parscale = use_parscale)
   }
   
   ## ------------ Final parameter set ------------------------------------------
@@ -130,7 +134,8 @@ g3_iterative <- function(gd,
   
   write.g3.param(final_params,
                  out_path,
-                 'final.params')
+                 'final.params',
+                 add_parscale = use_parscale)
   
   #save(final_params, file = file.path(out.dir, 'final_params.Rdata'))
   
@@ -212,7 +217,7 @@ g3_lik_out <- function(model, param){
     dplyr::left_join(param %>% 
                        dplyr::select(comp = .data$switch, weight = .data$value) %>% 
                        dplyr::mutate(comp = gsub('_weight', '', .data$comp),
-                              weight = unlist(.data$weight)),
+                                     weight = unlist(.data$weight)),
                      by = 'comp')
   attr(lik.out, 'param') <- param
   attr(lik.out, 'actions') <- attr(model,'actions')
