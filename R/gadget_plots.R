@@ -12,33 +12,45 @@ gadget_plots <- function(fit, path = NULL){
   if (!dir.exists(path)) dir.create(path)
   
   ## Survey indices
-  plot(fit)
-  ggsave("surveyIndices.png", path=path)
+  tmp <- plot(fit)
+  ggsave("surveyIndices.png", 
+         plot = tmp, 
+         path=path,
+         bg = "white")
   
   ## Catch distributions
   c1 <- plot(fit, data="catchdist.fleets")
   for (i in 1:length(c1)){
-    print(c1[[i]])
-    ggsave(paste0("catchdistribution_", names(c1)[[i]], ".png"), path=path)
+    
+    ggsave(paste0("catchdistribution_", names(c1)[[i]], ".png"), 
+           plot = print(c1[[i]]),
+           path=path,
+           bg = "white")
   }
   
   ## Growth
   if (any(grepl('aldist', names(c1)))){
     c1 <- plot(fit, data="catchdist.fleets", type="growth")
     for (i in 1:length(c1)){
-      print(c1[[i]])
-      ggsave(paste0("ageLength_", names(c1)[[i]], ".png"), path=path)
+      ggsave(paste0("ageLength_", names(c1)[[i]], ".png"), 
+             plot = print(c1[[i]]), 
+             path=path,
+             bg = "white")
     }  
   }
   
   
   ## Parameters
-  plot(fit, data="params", height=par("din")[1]*2, width=par("din")[2])
-  ggsave("parameters.png", path=path, height=par("din")[1]*2, width=par("din")[2]*1.25)
+  #  tmp <- plot(fit, data="params", height=par("din")[1]*2, width=par("din")[2])
+  #  ggsave("parameters.png", path=path, plot = tmp, height=par("din")[1]*2, width=par("din")[2]*1.25, bg = "white")
+  
   
   ## Residuals
-  plot(fit, data = "catchdist.fleets", type = "resid")
-  ggsave("residuals.png", path=path)
+  tmp <- plot(fit, data = "catchdist.fleets", type = "resid")
+  ggsave("residuals.png", 
+         plot = tmp, 
+         path=path,
+         bg = "white")
   
   ## ICES
   p1 <- plot(fit,data='res.by.year',type='total') + theme(legend.position = 'none') 
@@ -51,8 +63,8 @@ gadget_plots <- function(fit, path = NULL){
   dev.off()
   
   ## Maturity ogives
-  plot(fit, data="stockdist")
-  ggsave("maturity.png", path=path)
+  tmp <- plot(fit, data="stockdist")
+  ggsave("maturity.png", plot = tmp[[1]], path=path, bg = "white")
   
   ## Liklihood  
   #plot(fit, data="summary")
@@ -63,7 +75,7 @@ gadget_plots <- function(fit, path = NULL){
   #ggsave("liklihood_weighted.png", path=path)
   
   ## Suitability
-  plot(fit, data="suitability")
-  ggsave("suitability.png", path=path)
+  tmp <- plot(fit, data="suitability")
+  ggsave("suitability.png", plot = tmp, path=path, bg = "white")
   
 }
