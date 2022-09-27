@@ -23,7 +23,7 @@ gadget_plots <- function(fit, path = NULL){
   }
   
   ## Growth
-  if (grepl('aldist', names(c1))){
+  if (any(grepl('aldist', names(c1)))){
     c1 <- plot(fit, data="catchdist.fleets", type="growth")
     for (i in 1:length(c1)){
       print(c1[[i]])
