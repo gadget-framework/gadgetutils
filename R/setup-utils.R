@@ -165,7 +165,7 @@ stock_renewal <- function(stock,
                      g3_parameterized(name = paste0('rec.scalar', suffix),
                                       by_stock = id,
                                       exponentiate = exponentiate),
-                   ifmissing = NA)
+                   ifmissing = NaN)
   
 }
 
