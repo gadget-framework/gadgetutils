@@ -1,35 +1,3 @@
-#' Given an action type, return it's running order in a g3 model
-#'
-#' @param action_name String for a action type, e.g. "natural_mortality"
-#' @return Position integer, e.g. 4
-#' @export
-g3_action_order <- function(action_name){
-  
-  action_lookup <- list(
-    'time' = 0,
-    'printing' = 1,
-    'migration' = 2,
-    'consumption' = 3,
-    'natural_mortality' = 4,
-    'growth' = 5,
-    'spawning' = 6,
-    'maturation' = 7,
-    'recruitment' = 8,
-    'straying' = 9,
-    'likelihood' = 10,
-    'reporting' = 11,
-    'ageing' = 12
-  )
-  
-  if (!is.character(action_name)){ stop("The 'action_name' argument should be a character string") }
-  else{
-    if (!casefold(action_name) %in% names(action_lookup)){
-      stop("The 'action_name' argument does not match the list of action names")
-    }
-    return(action_lookup[[match(casefold(action_name), names(action_lookup))]])
-  }
-}
-
 #' Find steps relevant to an action type
 #'
 #' @param action_list List of g3 actions, e.g. list(g3a_time(), ...)

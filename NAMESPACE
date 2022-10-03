@@ -2,7 +2,6 @@
 
 export("%>%")
 export(eval_bounded)
-export(g3_action_order)
 export(g3_init_guess)
 export(g3_iterative)
 export(g3_iterative_final)
