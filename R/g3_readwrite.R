@@ -55,10 +55,4 @@ read.g3.param <- function(gd, file.name){
   
 }
 
-#' @export
-g3_add_parscale <- function(parameters){
-  par <- g3_tmb_parscale(parameters)
-  out <- utils::relist(par, unclass(parameters$value[parameters$optimise]))
-  parameters$parscale[match(names(out), parameters$switch)] <- out
-  return(parameters)
-}
+

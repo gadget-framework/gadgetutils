@@ -9,8 +9,9 @@ init_abund(
   mat,
   comp_id = "species",
   mature = TRUE,
-  init_mode = 2,
+  init_mode = 1,
   exp_init = FALSE,
+  exp_init_scalar = FALSE,
   exp_init_f = FALSE,
   naturalmortality = g3_parameterized("M", by_stock = TRUE)
 )
@@ -24,7 +25,9 @@ init_abund(
 
 \item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
 
-\item{exp_init}{Logical, whether the initial parameters should be exponentiated}
+\item{exp_init}{Logical, whether the initial age-specific parameters should be exponentiated}
+
+\item{exp_init_scalar}{Logical, whether the initial scalar should be exponentiated}
 
 \item{exp_init_f}{Logical, whether the parameter 'init.f' should be exponentiated}
 

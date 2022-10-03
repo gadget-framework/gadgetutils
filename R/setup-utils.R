@@ -34,7 +34,8 @@ g3a_initial_abund <- function(
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
-#' @param exp_init Logical, whether the initial parameters should be exponentiated
+#' @param exp_init Logical, whether the initial age-specific parameters should be exponentiated
+#' @param exp_init_scalar Logical, whether the initial scalar should be exponentiated
 #' @param exp_init_f Logical, whether the parameter 'init.f' should be exponentiated
 #' @param naturalmortality A g3 parameter for natural mortality
 #' @return g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
@@ -151,7 +152,8 @@ init_abund <- function(imm,
 #'
 #' @param stock A g3 stock object
 #' @param id Part of the stock name to use in parameter name
-#' @param exponentiate Should the renewal parameters be exponentiated?
+#' @param exponentiate_rec Should the annual renewal parameters be exponentiated?
+#' @param exponentiate_rec_scalar Should the renewal scalar be exponentiated?
 #' @return "scalar * renew" formula, parameterised for given stock
 #' @export
 stock_renewal <- function(stock, 
@@ -213,8 +215,8 @@ init_sd <- function(stock, id, parametric = FALSE){
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param init_mode 
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
-#' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat1','mat2','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
-#' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat1','mat2','m'
+#' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat_alpha','mat_l50','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
+#' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat_alpha','mat_l50','m'
 #' @return A list of g3 actions
 #' @export
 model_actions <- function(imm, 
