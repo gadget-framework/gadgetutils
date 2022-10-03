@@ -44,7 +44,7 @@ init_abund <- function(imm,
                        mat,
                        comp_id = 'species',
                        mature = TRUE,
-                       init_mode = 2,
+                       init_mode = 1,
                        exp_init = FALSE,
                        exp_init_f = FALSE,
                        naturalmortality = g3_parameterized('M', by_stock = TRUE)){
@@ -220,7 +220,7 @@ model_actions <- function(imm,
                           mlgg = 15,
                           mature = TRUE, 
                           comp_id = 'species', 
-                          init_mode = 2, 
+                          init_mode = 1, 
                           parametric_sd = FALSE,
                           exp_params = c(),
                           tv_params = c()){
@@ -247,7 +247,7 @@ model_actions <- function(imm,
   if (!is.null(exp_params)){ 
     param_list <- c('linf','k','bbin','recl','rec.sd','mat1','mat2',
                     'init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta')
-    if (exp_params == 'all'){
+    if ('all' %in% exp_params){
       exp_params <- param_list
     }
     else{
