@@ -91,6 +91,14 @@ g3_init_guess <- function(params, pattern,
 }
 
 #' @export
+g3_add_parscale <- function(parameters){
+  par <- g3_tmb_parscale(parameters)
+  out <- utils::relist(par, unclass(parameters$value[parameters$optimise]))
+  parameters$parscale[match(names(out), parameters$switch)] <- out
+  return(parameters)
+}
+
+#' @export
 transform_bounded <- function(params){
   
   if (!inherits(params, 'data.frame')){
