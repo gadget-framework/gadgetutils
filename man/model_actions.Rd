@@ -13,7 +13,8 @@ model_actions(
   init_mode = 1,
   parametric_sd = FALSE,
   exp_params = c(),
-  tv_params = c()
+  tv_params = c(),
+  by_age_params = c()
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ model_actions(
 \item{exp_params}{Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat_alpha','mat_l50','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.}
 
 \item{tv_params}{Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat_alpha','mat_l50','m'}
+
+\item{by_age_params}{Which parameters should be age-varying? by_age_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','mat_alpha','mat_l50','m'}
 }
 \value{
 A list of g3 actions

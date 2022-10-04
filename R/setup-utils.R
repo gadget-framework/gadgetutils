@@ -188,6 +188,7 @@ init_sd <- function(stock, id, parametric = FALSE){
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
 #' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat_alpha','mat_l50','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
 #' @param tv_params Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat_alpha','mat_l50','m'
+#' @param by_age_params Which parameters should be age-varying? by_age_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','mat_alpha','mat_l50','m'
 #' @return A list of g3 actions
 #' @export
 model_actions <- function(imm, 
@@ -198,7 +199,8 @@ model_actions <- function(imm,
                           init_mode = 1, 
                           parametric_sd = FALSE,
                           exp_params = c(),
-                          tv_params = c()){
+                          tv_params = c(),
+                          by_age_params = c()){
   
 
   ## Helper for g3_parameterized that modifies the name of a parameter if it is being exponentiated
@@ -211,7 +213,7 @@ model_actions <- function(imm,
     g3_parameterized(name,
                      by_stock = by_stock,
                      by_year = tolower(name) %in% tolower(tv_params),
-                     by_age = FALSE, ## Add option age_params
+                     by_age = tolower(name) %in% tolower(by_age_params), ## Add option age_params
                      exponentiate = tolower(name) %in% tolower(exp_params),
                      ...)
     
@@ -223,7 +225,7 @@ model_actions <- function(imm,
   ## Stock specific variables
   if (mature) output_stock <- list() else output_stock <- list(mat)
   
-  ## tv_params lookup to lower
+  ## TIME VARYING PARAMETERS
   if (!is.null(tv_params)){ 
     param_list <- c('linf','k','walpha','wbeta','bbin','recl','rec.sd','mat_alpha','mat_l50','m')
     tv_params <- casefold(tv_params)
@@ -233,6 +235,17 @@ model_actions <- function(imm,
     }  
   }
   
+  ## AGE VARYING PARAMETERS
+  if (!is.null(by_age_params)){ 
+    param_list <- c('linf','k','walpha','wbeta','bbin','mat_alpha','mat_l50','m')
+    by_age_params <- casefold(by_age_params)
+    if (!all(by_age_params %in% param_list)){
+      stop(paste0("The following parameters are not currently available as age-varying: ", 
+                  paste0(by_age_params[!(by_age_params %in% param_list)], collapse = ', ')))
+    }  
+  }
+  
+  ## EXPONENTIATING PARAMETERS
   if (!is.null(exp_params)){ 
     param_list <- c('linf','k','bbin','recl','rec.sd','mat_alpha','mat_l50',
                     'init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta')
@@ -249,8 +262,6 @@ model_actions <- function(imm,
     }
   }
   
-  by_age_params <- FALSE
-  
   ## Setup parameter references
   Linf <- setup_g3_param('Linf', comp_id, tv_params, by_age_params, exp_params)
   kk <- setup_g3_param('K', comp_id, tv_params, by_age_params, exp_params, scale = 0.001)
@@ -261,7 +272,7 @@ model_actions <- function(imm,
   recsd <- setup_g3_param('rec.sd', comp_id, tv_params, by_age_params, exp_params)
   mat_alpha <- setup_g3_param('mat_alpha', comp_id, tv_params, by_age_params, exp_params, scale = 0.001)
   mat_l50 <- setup_g3_param('mat_l50', comp_id, tv_params, by_age_params, exp_params)
-  natm <- setup_g3_param('M', by_stock = TRUE, tv_params, by_age_params, exp_params)
+  natm <- setup_g3_param('M', by_stock = comp_id, tv_params, by_age_params, exp_params)
   
   ## Create some variables
   initvonb <- g3a_renewal_vonb(Linf = Linf, K = kk, recl = recl)
