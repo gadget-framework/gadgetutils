@@ -1,32 +1,3 @@
-
-#' Parameterized initial conditions formula
-#'
-#' @param scalar formula substituted into initial conditions calculation
-#' @param init formula substituted into initial conditions calculation
-#' @param M formula substituted into initial conditions calculation
-#' @param init_F formula substituted into initial conditions calculation
-#' @param by_stock Controls how the 'scalar', 'init', and 'M' parameters are grouped
-#' @param by_stock_f Controls how the 'init_F' parameter is grouped
-#' @return g3a_initial_abund formula for use in g3a_initialconditions_normalparam()
-#'
-#' @export
-g3a_initial_abund <- function(
-    scalar = g3_parameterized('init', by_stock = by_stock),
-    init = g3_parameterized('init.scalar', by_stock = by_stock, by_age = TRUE),
-    M = g3_parameterized('M', by_stock = by_stock),
-    init_F = g3_parameterized('init.F', by_stock = by_stock_f),
-    by_stock = TRUE,
-    by_stock_f = FALSE){
-  
-  gadget3:::f_substitute(
-    ~scalar * init * exp(-1 * (M + init_F) * age),
-    list(scalar = scalar,
-         init = init,
-         M = M,
-         init_F = init_F)
-  )
-}
-
 #' Generate parameterised g3a_initial_abund
 #'
 #' @param imm A g3 stock object for immature specimens
@@ -83,7 +54,7 @@ init_abund <- function(imm,
                                                M = naturalmortality,
                                                maxage = gadget3:::g3_step(~stock_with(mat, mat__maxage))))
       
-    out <- g3a_initial_abund(scalar = init_scalar,
+    out <- gadget3::g3a_renewal_initabund(scalar = init_scalar,
                              init = 1,
                              M = naturalmortality,
                              init_F = g3_parameterized(name = 'init.F',
@@ -129,7 +100,7 @@ init_abund <- function(imm,
     else{
       
       ## MODE 2: Initial parameter per age group per stock
-      out <- g3a_initial_abund(scalar = g3_parameterized(name = 'init.scalar',
+      out <- gadget3::g3a_renewal_initabund(scalar = g3_parameterized(name = 'init.scalar',
                                                          by_stock = TRUE,
                                                          exponentiate = exp_init_scalar),
                                init = g3_parameterized(name = 'init',
