@@ -272,7 +272,7 @@ model_actions <- function(imm,
   recsd <- setup_g3_param('rec.sd', comp_id, tv_params, by_age_params, exp_params)
   mat_alpha <- setup_g3_param('mat_alpha', comp_id, tv_params, by_age_params, exp_params, scale = 0.001)
   mat_l50 <- setup_g3_param('mat_l50', comp_id, tv_params, by_age_params, exp_params)
-  natm <- setup_g3_param('M', by_stock = comp_id, tv_params, by_age_params, exp_params)
+  natm <- setup_g3_param('M', by_stock = TRUE, tv_params, by_age_params, exp_params)
   
   ## Create some variables
   initvonb <- g3a_renewal_vonb(Linf = Linf, K = kk, recl = recl)
