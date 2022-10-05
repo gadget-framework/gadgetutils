@@ -3,6 +3,7 @@
 export("%>%")
 export(eval_bounded)
 export(g3_add_parscale)
+export(g3_fit)
 export(g3_init_guess)
 export(g3_iterative)
 export(g3_iterative_final)
