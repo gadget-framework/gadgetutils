@@ -202,23 +202,24 @@ g3_lik_out <- function(model, param){
   nll <- res[[1]]
   
   lik.out <- 
-    out[grep('dist_.+_obs__num',names(out), value = TRUE)] %>% 
+    out[grep('dist_.+_obs__(wgt$|num$)',names(out), value = TRUE)] %>% 
     purrr::map(~sum(.>0)) %>% 
     purrr::map(~tibble::tibble(df = .)) %>% 
     dplyr::bind_rows(.id = 'comp') %>% 
-    dplyr::mutate(comp = gsub('_obs__num', '', .data$comp)) %>% 
+    dplyr::mutate(comp = gsub('_obs__(wgt$|num$)', '', .data$comp)) %>% 
     dplyr::left_join(
-      out[grep('nll_.dist_.+__num',names(out), value = TRUE)] %>% 
+      out[grep('nll_.dist_.+__(wgt$|num$)',names(out), value = TRUE)] %>% 
         purrr::map(sum) %>% 
         purrr::map(~tibble::tibble(value = .)) %>% 
         dplyr::bind_rows(.id = 'comp') %>% 
-        dplyr::mutate(comp = gsub('nll_(.+)__num$', '\\1', .data$comp)),
-      by = 'comp') %>% 
+        dplyr::mutate(comp = gsub('nll_(.+)__(wgt$|num$)', '\\1', .data$comp)),
+      by = 'comp') %>%
     dplyr::left_join(param %>% 
                        dplyr::select(comp = .data$switch, weight = .data$value) %>% 
                        dplyr::mutate(comp = gsub('_weight', '', .data$comp),
                                      weight = unlist(.data$weight)),
                      by = 'comp')
+  
   attr(lik.out, 'param') <- param
   attr(lik.out, 'actions') <- attr(model,'actions')
   attr(lik.out, 'model_out') <- out
