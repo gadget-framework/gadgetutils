@@ -33,7 +33,8 @@ g3_iterative <- function(gd,
   write.g3.file(init_weights, out_path, 'lik.init')
   
   ## Setup the initial parameter files
-  init_params <- g3_iterative_setup(init_weights, grouping = grouping)
+  init_params <- g3_iterative_setup(init_weights[init_weights > 0,], 
+                                    grouping = grouping)
   
   ## Write groupings 
   write.g3.file(init_params$grouping, out_path, 'lik.groupings')
@@ -294,6 +295,7 @@ g3_iterative_final <- function(lik_out_list){
   weights <- 
     lik_out_list %>% 
     dplyr::bind_rows(.id = 'group') %>% 
+    dplyr::mutate(value = ifelse(weight == 0, 0, value)) %>% 
     dplyr::group_by(.data$comp) %>% 
     dplyr::filter(.data$value == min(.data$value)) %>% 
     dplyr::select(.data$comp, .data$df, .data$value) %>% 
