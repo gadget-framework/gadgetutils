@@ -85,6 +85,7 @@ g3_init_guess <- function(params, pattern,
     params[grepl(v_pattern, params$switch), 'value'] <- value
     params[grepl(v_pattern, params$switch), 'lower'] <- lower
     params[grepl(v_pattern, params$switch), 'upper'] <- upper
+    params[grepl(v_pattern, params$switch), 'parscale'] <- diff(c(lower, upper))
     params[grepl(v_pattern, params$switch), 'optimise'] <- as.logical(optimise)
   }
   return(params)

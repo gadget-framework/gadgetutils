@@ -17,8 +17,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
           tmp <- NULL
       }
   } else if (is(model, "g3_cpp")) {
-      stopifnot(is.data.frame(params))
-      if ("report_detail" %in% names(params$switch)) {
+      if (is.data.frame(params) && "report_detail" %in% names(params$switch)) {
           params['report_detail', 'value'] <- 1L
           tmp <- gadget3::g3_tmb_adfun(model, params)$report(gadget3::g3_tmb_par(params))
       } else {
