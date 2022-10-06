@@ -110,7 +110,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
                                  paste0('age', .data$lower_age), 
                                  paste0('all', .data$lower_age))) %>% 
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                    .data$stock, .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
+                    matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
                     .data$obs, .data$total.catch, .data$observed,
                     .data$pred, .data$total.pred, .data$predicted, .data$residuals)
     
