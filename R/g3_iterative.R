@@ -33,7 +33,7 @@ g3_iterative <- function(gd,
   write.g3.file(init_weights, out_path, 'lik.init')
   
   ## Setup the initial parameter files
-  init_params <- g3_iterative_setup(init_weights[init_weights$weights > 0,], 
+  init_params <- g3_iterative_setup(init_weights[init_weights$weight > 0,], 
                                     grouping = grouping)
   
   ## Write groupings 
