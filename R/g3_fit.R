@@ -7,8 +7,17 @@
 #' @return List of tibbles
 #' @export
 g3_fit <- function(model, params, rec.steps = 1, steps = 1){
+  
+  stopifnot(is.list(params))
+  
+  ## Returning parameters as they are put in for now
+  ## so model(fit$params) will work without any fiddling
+  out_params <- params
+  
   if (is(model, "g3_r")) {
-      stopifnot(is.list(params))
+      if (inherits(params, 'data.frame')){
+        params <- params$value
+      }
       if ("report_detail" %in% names(params)) {
           params$report_detail <- 1L
           model_output <- model(params)
@@ -411,7 +420,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     fleet.info = fleet.info,
     stock.recruitment = stock.recruitment,
     res.by.year = res.by.year,
-    params = tibble::as_tibble(params)
+    params = out_params
   )
   class(out) <- c('gadget.fit',class(out))
   return(out)
