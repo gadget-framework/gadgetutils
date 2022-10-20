@@ -263,7 +263,7 @@ g3_iterative_run <- function(param,
   }
   
   ## Run optimiser
-  fit.opt <- optim(g3_tmb_par(param),
+  fit.opt <- optim(obj_fun$par,
                    obj_fun$fn,
                    obj_fun$gr,
                    method = opt_method,

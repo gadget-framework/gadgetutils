@@ -42,7 +42,7 @@ g3_retro <- function(dir, model, params, num.years = 5){
     obj_fun <- g3_tmb_adfun(tmb_model, param)
     
     ## Optimise model
-    fit.opt <- optim(g3_tmb_par(param),
+    fit.opt <- optim(obj_fun$par,
                      obj_fun$fn,
                      obj_fun$gr,
                      method = 'BFGS',
