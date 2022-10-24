@@ -257,8 +257,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     tmp[grepl('detail_', names(tmp)) & !grepl('wgt$|num$|suit', names(tmp))] %>% 
     purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'biomass_consumed') %>% 
     dplyr::bind_rows(.id='comp') %>% 
-    dplyr::mutate(stock = gsub('detail_(.+)__(.+)', '\\1', .data$comp),
-                  fleet = gsub('detail_(.+)__(.+)', '\\2', .data$comp)) %>% 
+    dplyr::mutate(stock = gsub('detail_(.+)__predby_(.+)', '\\1', .data$comp),
+                  fleet = gsub('detail_(.+)__predby_(.+)', '\\2', .data$comp)) %>% 
     dplyr::select(-.data$comp) %>% 
     dplyr::left_join(weight_reports, by = c("time", "area", "stock", "age", "length")) %>% 
     split_length() %>% 
