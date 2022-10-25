@@ -11,7 +11,8 @@ g3_iterative(
   tmb_model,
   params.in,
   grouping = list(),
-  opt_method = "BFGS",
+  method = "BFGS",
+  control = list(),
   use_parscale = TRUE
 )
 }
@@ -25,6 +26,10 @@ g3_iterative(
 \item{params.in}{Initial parameters to use with the model}
 
 \item{grouping}{List of component names to optmise together}
+
+\item{method}{The optimisation method, see \code{\link[stats]{optim}}}
+
+\item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
 }
 \value{
 Final set of parameters
