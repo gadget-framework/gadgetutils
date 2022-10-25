@@ -5,17 +5,17 @@
 #' @param r_model A G3 model, produced by g3_to_r()
 #' @param params.in Initial parameters to use with the model
 #' @param grouping List of component names to optmise together
+#' @param method The optimisation method, see \code{\link[stats]{optim}}
+#' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @return Final set of parameters
 #' @importFrom rlang .data
 #' @importFrom stats optim
 #' @export
-g3_iterative <- function(gd,
-                         wgts = 'WGTS',
-                         r_model, 
-                         tmb_model, 
-                         params.in, 
+g3_iterative <- function(gd, wgts = 'WGTS',
+                         r_model, tmb_model, params.in, 
                          grouping = list(),
-                         opt_method = 'BFGS',
+                         method = 'BFGS',
+                         control = list(),
                          use_parscale = TRUE){
   
   out_path <- file.path(gd, wgts)
@@ -50,10 +50,11 @@ g3_iterative <- function(gd,
   ## -------------- Run first stage of iterative re-weighting  -----------------
   
   stage1_params <- parallel::mclapply(init_params$params, 
-                                      function(x){g3_iterative_run(x, 
-                                                                   tmb_model, 
-                                                                   opt_method,
-                                                                   use_parscale)}, 
+                                      function(x){g3_optim(model = tmb_model, 
+                                                           params = x,
+                                                           use_parscale = use_parscale,
+                                                           method = method,
+                                                           control = control)}, 
                                       mc.cores = parallel::detectCores())
   
   ## Summary of optimisation settings and run details
@@ -95,10 +96,11 @@ g3_iterative <- function(gd,
   ## ----------- Second round of re-weighting ----------------------------------
   
   stage2_params <- parallel::mclapply(int_params, 
-                                      function(x){g3_iterative_run(x, 
-                                                                   tmb_model,
-                                                                   opt_method,
-                                                                   use_parscale)}, 
+                                      function(x){g3_optim(model = tmb_model, 
+                                                           params = x,
+                                                           use_parscale = use_parscale,
+                                                           method = method,
+                                                           control = control)}, 
                                       mc.cores = parallel::detectCores())
   
   #save(stage2_params, file = file.path(out.dir, 'stage2_params.Rdata'))
@@ -232,62 +234,6 @@ g3_lik_out <- function(model, param){
 #   obj_fun <- g3_tmb_adfun(tmb_model,param)
 #   attr(obj_fun,'param') <- param
 # }
-
-#' @export
-g3_iterative_run <- function(param, 
-                             tmb_model, 
-                             opt_method = 'BFGS', 
-                             use_parscale = TRUE){
-  
-  # Compile and generate TMB ADFun (see ?TMB::MakeADFun)
-  obj_fun <- g3_tmb_adfun(tmb_model, param)
-  
-  # Sort out upper and lower
-  if (opt_method == 'L-BFGS-B'){
-    parhigh <- g3_tmb_upper(param)
-    parlow <- g3_tmb_lower(param)
-  }
-  else{
-    parhigh <- Inf
-    parlow <- -Inf
-  }
-  
-  ## Control list for optimisation
-  opt_control <- list(
-    trace = 2,
-    maxit = 1000,
-    reltol = .Machine$double.eps^2
-  )
-  if (use_parscale){
-    opt_control <- c(opt_control, list(parscale = g3_tmb_parscale(param)))
-  }
-  
-  ## Run optimiser
-  fit.opt <- optim(obj_fun$par,
-                   obj_fun$fn,
-                   obj_fun$gr,
-                   method = opt_method,
-                   lower = parlow,
-                   upper = parhigh,
-                   control = opt_control)
-  
-  ## Optimised parameters  
-  p <- g3_tmb_relist(param,fit.opt$par)
-  param$value[names(p)] <- p
-  
-  ## Add summary of input/output to an attribute of params
-  attributes(param)$summary <- data.frame(opt_method = opt_method,
-                                          max_iterations = opt_control$maxit,
-                                          reltol = opt_control$reltol,
-                                          function_calls = fit.opt$counts[1],
-                                          gradient_calls = fit.opt$counts[2],
-                                          convergence = ifelse(fit.opt$convergence == 0, TRUE, FALSE),
-                                          score = fit.opt$value)
-  
-  
-  return(param)
-  
-}
 
 #' @export
 g3_iterative_final <- function(lik_out_list){
