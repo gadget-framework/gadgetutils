@@ -7,13 +7,12 @@
 g3_iterative(
   gd,
   wgts = "WGTS",
-  r_model,
-  tmb_model,
+  model,
   params.in,
   grouping = list(),
+  use_parscale = TRUE,
   method = "BFGS",
-  control = list(),
-  use_parscale = TRUE
+  control = list()
 )
 }
 \arguments{
@@ -21,11 +20,13 @@ g3_iterative(
 
 \item{wgts}{Directory name within gd to store run outputs}
 
-\item{r_model}{A G3 model, produced by g3_to_r()}
+\item{model}{A G3 model, produced by g3_to_r()}
 
 \item{params.in}{Initial parameters to use with the model}
 
 \item{grouping}{List of component names to optmise together}
+
+\item{use_parscale}{Logical indicating whether optim(control(parscale)) should be used}
 
 \item{method}{The optimisation method, see \code{\link[stats]{optim}}}
 

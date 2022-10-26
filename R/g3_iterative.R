@@ -2,9 +2,10 @@
 #'
 #' @param gd Directory to store output
 #' @param wgts Directory name within gd to store run outputs
-#' @param r_model A G3 model, produced by g3_to_r()
+#' @param model A G3 model, produced by g3_to_r()
 #' @param params.in Initial parameters to use with the model
 #' @param grouping List of component names to optmise together
+#' @param use_parscale Logical indicating whether optim(control$parscale) should be used
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @return Final set of parameters
@@ -12,19 +13,27 @@
 #' @importFrom stats optim
 #' @export
 g3_iterative <- function(gd, wgts = 'WGTS',
-                         r_model, tmb_model, params.in, 
+                         model, params.in, 
                          grouping = list(),
+                         use_parscale = TRUE,
                          method = 'BFGS',
-                         control = list(),
-                         use_parscale = TRUE){
+                         control = list()){
   
   out_path <- file.path(gd, wgts)
   if (!dir.exists(out_path)) dir.create(out_path, recursive = TRUE)
   
+  ## Compile the TMB model if the R version is passed in...
+  if (inherits(model, 'g3_r')){
+    model <- gadget3::g3_to_tmb(actions = attr(model, 'actions'))
+  }
+  
+  ## Compile and generate TMB ADFun (see ?TMB::MakeADFun)
+  obj_fun <- gadget3::g3_tmb_adfun(model, tmb_param)
+  
   ## -------------- Iterative re-weighting setup -------------------------------
   
   ## Run the R model to get the initial results
-  init_weights <- g3_lik_out(r_model, params.in)
+  init_weights <- g3_lik_out(model, params.in)
   
   if (is.na(attr(init_weights, 'nll'))){
     stop('The gadget model did not run')
@@ -50,7 +59,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   ## -------------- Run first stage of iterative re-weighting  -----------------
   
   stage1_params <- parallel::mclapply(init_params$params, 
-                                      function(x){g3_optim(model = tmb_model, 
+                                      function(x){g3_optim(model = model, 
                                                            params = x,
                                                            use_parscale = use_parscale,
                                                            method = method,
@@ -78,7 +87,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   
   ## Update weights for second round of re-weighting
   int_params <- parallel::mclapply(stage1_params, 
-                                   function(x){ g3_lik_out(r_model, x) }, 
+                                   function(x){ g3_lik_out(model, x) }, 
                                    mc.cores = parallel::detectCores()) %>% 
     g3_iterative_final()
   
@@ -96,7 +105,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   ## ----------- Second round of re-weighting ----------------------------------
   
   stage2_params <- parallel::mclapply(int_params, 
-                                      function(x){g3_optim(model = tmb_model, 
+                                      function(x){g3_optim(model = model, 
                                                            params = x,
                                                            use_parscale = use_parscale,
                                                            method = method,
@@ -124,7 +133,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   
   final_lik <- 
     parallel::mclapply(stage2_params, 
-                       function(x){ g3_lik_out(r_model, x) }, 
+                       function(x){ g3_lik_out(model, x) }, 
                        mc.cores = parallel::detectCores()) 
   final_score <- 
     final_lik %>% 
@@ -195,23 +204,25 @@ g3_iterative_setup <- function(lik_out,
 #' @export
 g3_lik_out <- function(model, param){
   
-  if(!('data.frame' %in% class(param) & 
-       sum(c("switch", "value","optimise" ) %in% names(param))==3)){
-    stop('Error in param, expected data.frame')
+  if (inherits(model, 'g3_r')){
+    model <- gadget3::g3_to_tmb(attr(model, 'actions'))
+  }
+  if (!inherits(param, 'data.frame')){
+    stop('Error in param, expected a data.frame')
   }
   
-  res <- model(param$value)
-  out <- attributes(res)
-  nll <- res[[1]]
+  ## We only need reporting so build the objective function using type = 'Fun'
+  adfun <- gadget3::g3_tmb_adfun(model, param, type = 'Fun')
+  res <- adfun$report(adfun$par)
   
   lik.out <- 
-    out[grep('dist_.+_obs__(wgt$|num$)',names(out), value = TRUE)] %>% 
+    res[grep('dist_.+_obs__(wgt$|num$)', names(res), value = TRUE)] %>% 
     purrr::map(~sum(.>0)) %>% 
     purrr::map(~tibble::tibble(df = .)) %>% 
     dplyr::bind_rows(.id = 'comp') %>% 
     dplyr::mutate(comp = gsub('_obs__(wgt$|num$)', '', .data$comp)) %>% 
     dplyr::left_join(
-      out[grep('nll_.dist_.+__(wgt$|num$)',names(out), value = TRUE)] %>% 
+      res[grep('nll_.dist_.+__(wgt$|num$)', names(res), value = TRUE)] %>% 
         purrr::map(sum) %>% 
         purrr::map(~tibble::tibble(value = .)) %>% 
         dplyr::bind_rows(.id = 'comp') %>% 
@@ -224,9 +235,9 @@ g3_lik_out <- function(model, param){
                      by = 'comp')
   
   attr(lik.out, 'param') <- param
-  attr(lik.out, 'actions') <- attr(model,'actions')
-  attr(lik.out, 'model_out') <- out
-  attr(lik.out, 'nll') <- nll
+  #attr(lik.out, 'actions') <- attr(model,'actions')
+  #attr(lik.out, 'model_out') <- out
+  attr(lik.out, 'nll') <- res$nll
   return(lik.out)
 }
 
