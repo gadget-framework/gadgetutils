@@ -2,9 +2,16 @@
 % Please edit documentation in R/parameter_template_utils.R
 \name{g3_init_guess}
 \alias{g3_init_guess}
-\title{Set initial guesses, automatically honouring any bounded() parameters}
+\title{Set initial guesses for parameter values in g3_cpp parameter template}
 \usage{
-g3_init_guess(params, pattern, value = 0, lower = NA, upper = NA, optimise = 1)
+g3_init_guess(
+  params,
+  pattern,
+  value = 0,
+  lower = -999,
+  upper = 999,
+  optimise = 0
+)
 }
 \arguments{
 \item{params}{Parameter template from g3_to_tmb()}
@@ -23,5 +30,5 @@ g3_init_guess(params, pattern, value = 0, lower = NA, upper = NA, optimise = 1)
 Updated parameter template
 }
 \description{
-Set initial guesses, automatically honouring any bounded() parameters
+Set initial guesses for parameter values in g3_cpp parameter template
 }
