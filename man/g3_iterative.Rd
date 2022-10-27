@@ -12,7 +12,8 @@ g3_iterative(
   grouping = list(),
   use_parscale = TRUE,
   method = "BFGS",
-  control = list()
+  control = list(),
+  shortcut = FALSE
 )
 }
 \arguments{
@@ -26,11 +27,13 @@ g3_iterative(
 
 \item{grouping}{List of component names to optmise together}
 
-\item{use_parscale}{Logical indicating whether optim(control(parscale)) should be used}
+\item{use_parscale}{Logical indicating whether optim(control$parscale) should be used}
 
 \item{method}{The optimisation method, see \code{\link[stats]{optim}}}
 
 \item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
+
+\item{shortcut}{If TRUE, weights for each component will be approximated and a final optimisation performed}
 }
 \value{
 Final set of parameters
