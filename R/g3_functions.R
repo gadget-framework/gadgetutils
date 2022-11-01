@@ -65,9 +65,3 @@ g3_retro <- function(dir, model, params, num.years = 5){
   }
   return(out)
 }
-
-
-save_obj <- function(..., file) {
-  x <- list(...)
-  save(list = names(x), file = file, envir = list2env(x))
-}

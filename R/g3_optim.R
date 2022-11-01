@@ -6,6 +6,7 @@
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @param print_status Print step comments, does not suppress comments from optim call (see control$trace)
+#' @param print_id A character string appended to the print statements (useful for when running g3_optim in parallel)
 #' @param ... Further arguments to be passed gadget3::g3_tmb_adfun, see \code{\link[gadget3]{g3_tmb_adfun}}
 #' @return A g3_cpp parameter template with optimised values
 #'
@@ -16,6 +17,7 @@ g3_optim <- function(model,
                      method = 'BFGS',
                      control = list(),
                      print_status = FALSE,
+                     print_id = '',
                      ...){
   
   ## Checks
@@ -32,12 +34,14 @@ g3_optim <- function(model,
     stop()
   }
   
+  ## Prefix for printing
+  if (print_status && nchar(print_id > 0)) print_id <- paste(' for', print_id)
+  
   ## Create the objective function
-  if (!print_status) cat('##  Creating objective function\n')
+  if (print_status) echo_message('##  Creating objective function', print_id)
   obj_fun <- gadget3::g3_tmb_adfun(model, params, ...)
   
   ## Configure bounds for optimisation
-  if (!print_status) cat('##  Configuring optimisation setup\n')
   if (method == 'L-BFGS-B'){
     parhigh <- gadget3::g3_tmb_upper(params)
     parlow <- gadget3::g3_tmb_lower(params)
@@ -58,14 +62,16 @@ g3_optim <- function(model,
   }
   
   ## Run optimiser
-  if (!print_status) cat('##  Running optimisation\n')
+  if (print_status) echo_message('##  Running optimisation', print_id)
   fit_opt <- optim(par = obj_fun$par, fn = obj_fun$fn, gr = obj_fun$gr,
                    method = method,
                    lower = parlow, upper = parhigh,
                    control = control)
   
-  if (!print_status) cat('##  Optimisation finished, convergence = ',
-                   ifelse(fit_opt$convergence == 0, TRUE, FALSE), '\n')
+  if (print_status) echo_message('##  Optimisation finished', 
+                                 print_id, 
+                                 '. Convergence = ',
+                                 ifelse(fit_opt$convergence == 0, TRUE, FALSE))
   
   ## Optimised parameters  
   p <- gadget3::g3_tmb_relist(params, fit_opt$par)

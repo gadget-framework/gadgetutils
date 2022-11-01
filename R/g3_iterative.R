@@ -91,13 +91,18 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
     ## -------------- Run first stage of iterative re-weighting  -----------------
     
-    stage1_params <- parallel::mclapply(init_params$params, 
-                                        function(x){g3_optim(model = model, 
-                                                             params = x,
-                                                             use_parscale = use_parscale,
-                                                             method = method,
-                                                             control = control,
-                                                             print_status = FALSE)}, 
+    echo_message('##  STAGE 1 OPTIMISATION\n')
+    stage1_params <- parallel::mclapply(stats::setNames(names(init_params$params), 
+                                                        names(init_params$params)),
+                                        function(x){
+                                          g3_optim(model = model,
+                                                   params = init_params$params[[x]],
+                                                   use_parscale = use_parscale,
+                                                   method = method,
+                                                   control = control,
+                                                   print_status = TRUE,
+                                                   print_id = x)
+                                          },
                                         mc.cores = parallel::detectCores())
     
     ## Summary of optimisation settings and run details
@@ -138,13 +143,18 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
     ## ----------- Second round of re-weighting ----------------------------------
     
-    stage2_params <- parallel::mclapply(int_params, 
-                                        function(x){g3_optim(model = model, 
-                                                             params = x,
-                                                             use_parscale = use_parscale,
-                                                             method = method,
-                                                             control = control,
-                                                             print_status = FALSE)}, 
+    echo_message('\n##  STAGE 2 OPTIMISATION\n')
+    stage2_params <- parallel::mclapply(stats::setNames(names(int_params), 
+                                                        names(int_params)),
+                                        function(x){
+                                          g3_optim(model = model,
+                                                   params = int_params[[x]],
+                                                   use_parscale = use_parscale,
+                                                   method = method,
+                                                   control = control,
+                                                   print_status = TRUE,
+                                                   print_id = x)
+                                          },
                                         mc.cores = parallel::detectCores())
     
     #save(stage2_params, file = file.path(out.dir, 'stage2_params.Rdata'))
