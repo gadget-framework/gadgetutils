@@ -63,30 +63,54 @@ g3_optim <- function(model,
   
   ## Run optimiser
   if (print_status) echo_message('##  Running optimisation', print_id)
-  fit_opt <- optim(par = obj_fun$par, fn = obj_fun$fn, gr = obj_fun$gr,
-                   method = method,
-                   lower = parlow, upper = parhigh,
-                   control = control)
+  fit_opt <- try({
+    
+    optim(par = obj_fun$par, fn = obj_fun$fn, gr = obj_fun$gr,
+          method = method,
+          lower = parlow, upper = parhigh,
+          control = control)
+    
+  }, silent = FALSE)
   
-  if (print_status) echo_message('##  Optimisation finished', 
-                                 print_id, 
-                                 '. Convergence = ',
-                                 ifelse(fit_opt$convergence == 0, TRUE, FALSE))
-  
+  ## Check whether the optimisation crashed
+  if (inherits(fit_opt, 'try-error')){
+    model.opt.fail <- TRUE
+    warning(paste0('The optimisation failed', print_id))
+    
+    ## Construct failed fit_opt object
+    fit_opt <- list(par = g3_tmb_par(params),
+                    counts = c(NA, NA),
+                    convergence = NA,
+                    value = NA)
+    fit_opt$par[] <- NA
+  }
+  else{
+    model.opt.fail <- FALSE
+    if (print_status) echo_message('##  Optimisation finished', 
+                                   print_id, 
+                                   '. Convergence = ',
+                                   ifelse(fit_opt$convergence == 0, TRUE, FALSE))
+    
+  }
+    
   ## Optimised parameters  
   p <- gadget3::g3_tmb_relist(params, fit_opt$par)
   params$value[names(p)] <- p
-  
+    
   ## Add summary of input/output to an attribute of params
-  attributes(params)$summary <- data.frame(method = method,
-                                           max_iterations = control$maxit,
-                                           reltol = control$reltol,
-                                           function_calls = fit_opt$counts[1],
-                                           gradient_calls = fit_opt$counts[2],
-                                           convergence = ifelse(fit_opt$convergence == 0, TRUE, FALSE),
-                                           score = fit_opt$value)
+  attributes(params)$summary <- 
+    data.frame(method = method,
+               maxiter = control$maxit,
+               reltol = control$reltol,
+               optim_complete = ifelse(model.opt.fail, 0, 1),
+               fn_calls = fit_opt$counts[1],
+               gd_calls = fit_opt$counts[2],
+               convergence = ifelse(model.opt.fail, NA, 
+                                    ifelse(fit_opt$convergence == 0, TRUE, FALSE)),
+               score = fit_opt$value
+               )
   
   return(params)
-  
+    
 }
   
