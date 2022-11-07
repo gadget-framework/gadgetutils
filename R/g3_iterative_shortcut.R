@@ -11,7 +11,7 @@ estimate_weights <- function(model, params){
   ## Collate reports from the model
   adfun <- gadget3::g3_tmb_adfun(model, params, type = 'Fun')
   res <- adfun$report(adfun$par)
-
+  
   ## Catch distribution weights
   out <- 
     lapply(res[grepl('^cdist_(.+)_obs__(wgt$|num$)', names(res))],
@@ -43,7 +43,8 @@ estimate_weights_cdist <- function(dat){
   tmp %>% 
     left_join(tmp %>% 
                 group_by(age,length) %>% 
-                summarise(phat=mean(p))) %>% 
+                summarise(phat=mean(p), .groups = 'drop'), 
+              by = c('age', 'length')) %>% 
     ungroup() %>% 
     summarise(ss = sum((p-phat)^2/n()))
 }

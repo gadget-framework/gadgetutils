@@ -57,22 +57,21 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     echo_message('##  RUNNING ITERATIVE SHORTCUT\n')
     
     ## First approximate weights and write to file
-    approx_weights <- estimate_weights(model, params.in)
-    write.g3.file(approx_weights, out_path, 'final.weights.shortcut')
+    write.g3.file(approx_weights, out_path, 'weights.final.shortcut')
     
     ## Merge estimated weights into parameter template
     params.in$value[match(approx_weights$comp, params.in$switch)] <- approx_weights$weight
     
     ## Run optimisation
-    final_params <- g3_optim(model = model, 
+    params_final <- g3_optim(model = model, 
                              params = params.in,
                              use_parscale = use_parscale,
                              method = method,
                              control = control)
     
-    write.g3.param(final_params,
+    write.g3.param(params_final,
                    out_path,
-                   'final.params.shortcut',
+                   'params.final.shortcut',
                    add_parscale = use_parscale)
     
   }else{
@@ -87,37 +86,37 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     ## -------------- Iterative re-weighting setup -------------------------------
     
     ## Run the R model to get the initial results
-    init_weights <- g3_lik_out(model, params.in)
+    lik_init <- g3_lik_out(model, params.in)
     
-    if (is.na(attr(init_weights, 'nll'))){
+    if (is.na(attr(lik_init, 'nll'))){
       stop('The gadget model did not run')
     }
     
-    write.g3.file(init_weights, out_path, 'lik.init')
+    write.g3.file(lik_init, out_path, 'lik.init')
     
     ## Setup the initial parameter files
-    init_params <- g3_iterative_setup(init_weights[init_weights$weight > 0,], 
-                                      grouping = grouping)
+    params_in_s1 <- g3_iterative_setup(lik_init[lik_init$weight > 0,],
+                                       grouping = grouping)
     
     ## Write groupings 
-    write.g3.file(attr(init_params, 'grouping'), out_path, 'lik.groupings')
+    write.g3.file(attr(params_in_s1, 'grouping'), out_path, 'lik.groupings')
     
     ## Initial parameters (weights included in parameter template)
-    for (i in names(init_params)){
-      write.g3.param(init_params[[i]], 
+    for (i in names(params_in_s1)){
+      write.g3.param(params_in_s1[[i]], 
                      out_path, 
-                     paste0('params.init.stage1.', i),
+                     paste0('params.in.stage1.', i),
                      add_parscale = use_parscale)
     }
     
     ## -------------- Run first stage of iterative re-weighting  -----------------
     
     echo_message('##  STAGE 1 OPTIMISATION\n')
-    stage1_params <- parallel::mclapply(stats::setNames(names(init_params), 
-                                                        names(init_params)),
+    params_out_s1 <- parallel::mclapply(stats::setNames(names(params_in_s1), 
+                                                        names(params_in_s1)),
                                         function(x){
                                           g3_optim(model = model,
-                                                   params = init_params[[x]],
+                                                   params = params_in_s1[[x]],
                                                    use_parscale = use_parscale,
                                                    method = method,
                                                    control = control,
@@ -128,13 +127,13 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
     
     ## Summary of optimisation settings and run details
-    lapply(stage1_params, function(x) attr(x, 'summary')) %>% 
+    lapply(params_out_s1, function(x) attr(x, 'summary')) %>% 
       dplyr::bind_rows(.id = 'group') %>% 
       write.g3.file(out_path, 'optim.summary.stage1')
     
-    for (i in names(stage1_params)){
-      attr(stage1_params[[i]], 'summary') <- NULL
-      write.g3.param(stage1_params[[i]],
+    for (i in names(params_out_s1)){
+      attr(params_out_s1[[i]], 'summary') <- NULL
+      write.g3.param(params_out_s1[[i]],
                      out_path,
                      paste0('params.out.stage1.', i),
                      add_parscale = use_parscale)
@@ -145,12 +144,12 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     ## ------------ Update weights for second round of re-weighting --------------
     
     ## Update weights for second round of re-weighting
-    lik_s1 <- parallel::mclapply(stage1_params, 
+    lik_s1 <- parallel::mclapply(params_out_s1, 
                                  function(x){ g3_lik_out(model, x) }, 
                                  mc.cores = parallel::detectCores())  
     
     ## Update the parameters
-    int_params <- g3_update_weights(lik_s1, attr(init_params, 'grouping'))
+    params_in_s2 <- g3_update_weights(lik_s1, attr(params_in_s1, 'grouping'))
     
     ## Identify any failed components
     failed_components <- find_failed(lik_s1)
@@ -160,7 +159,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       
       ## Find the weights for the failed component
       bad_pars <- 
-        attr(init_params, 'grouping') %>%
+        attr(params_in_s1, 'grouping') %>%
         dplyr::select(-comp) %>% 
         dplyr::rename(comp = param_name) %>% 
         dplyr::left_join(approx_weights, by = 'comp') %>% 
@@ -168,8 +167,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
         dplyr::select(comp, weight)   
       
       ## Merge the approximated weight into each component
-      int_params <- 
-        lapply(int_params, function(x){
+      params_in_s2 <- 
+        lapply(params_in_s2, function(x){
           x$value[bad_pars$comp] <- bad_pars$weight
           return(x)
         })
@@ -178,27 +177,27 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       for (i in seq_along(failed_components)){
         warning(paste0('## STAGE 1: optimisation for component ', i, ' failed, therefore corresponding weights are approximated using the shortcut method and optimised parameter values are taken from the initial values'))
         ## Identify the NA params
-        na_params <- int_params[[i]][is.na(int_params[[i]]$value), 'switch']
+        na_params <- params_in_s2[[i]][is.na(params_in_s2[[i]]$value), 'switch']
         ## Merge values from previous param set
-        int_params[[i]]$value[na_params] <- init_params[[i]]$value[na_params]
+        params_in_s2[[i]]$value[na_params] <- params_in_s1[[i]]$value[na_params]
       }
     }
         
-    for (i in names(int_params)){
-      write.g3.param(int_params[[i]],
+    for (i in names(params_in_s2)){
+      write.g3.param(params_in_s2[[i]],
                      out_path,
-                     paste0('params.init.stage2.', i),
+                     paste0('params.in.stage2.', i),
                      add_parscale = use_parscale)
     }
     
     ## ----------- Second round of re-weighting ----------------------------------
     
     echo_message('\n##  STAGE 2 OPTIMISATION\n')
-    stage2_params <- parallel::mclapply(stats::setNames(names(int_params), 
-                                                        names(int_params)),
+    params_out_s2 <- parallel::mclapply(stats::setNames(names(params_in_s2), 
+                                                        names(params_in_s2)),
                                         function(x){
                                           g3_optim(model = model,
-                                                   params = int_params[[x]],
+                                                   params = params_in_s2[[x]],
                                                    use_parscale = use_parscale,
                                                    method = method,
                                                    control = control,
@@ -207,16 +206,16 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                                           },
                                         mc.cores = parallel::detectCores())
     
-    #save(stage2_params, file = file.path(out.dir, 'stage2_params.Rdata'))
+    #save(params_out_s2, file = file.path(out.dir, 'params_out_s2.Rdata'))
     
     ## Summary of optimisation settings and run details
-    lapply(stage2_params, function(x) attr(x, 'summary')) %>% 
+    lapply(params_out_s2, function(x) attr(x, 'summary')) %>% 
       dplyr::bind_rows(.id = 'group') %>% 
       write.g3.file(out_path, 'optim.summary.stage2')
     
-    for (i in names(stage2_params)){
-      attr(stage2_params[[i]], 'summary') <- NULL
-      write.g3.param(stage2_params[[i]],
+    for (i in names(params_out_s2)){
+      attr(params_out_s2[[i]], 'summary') <- NULL
+      write.g3.param(params_out_s2[[i]],
                      out_path,
                      paste0('params.out.stage2.', i),
                      add_parscale = use_parscale)
@@ -224,20 +223,20 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
     ## ------------ Final parameter set ------------------------------------------
     
-    final_lik <- 
-      parallel::mclapply(stage2_params, 
+    lik_final <- 
+      parallel::mclapply(params_out_s2, 
                          function(x){ g3_lik_out(model, x) }, 
                          mc.cores = parallel::detectCores()) 
     
     final_score <- 
-      final_lik %>% 
+      lik_final %>% 
       dplyr::bind_rows(.id = 'group') %>% 
       dplyr::group_by(.data$group) %>% 
       dplyr::summarise(s = sum(.data$value*.data$weight))
     
     if (all(is.na(final_score$s))){
       warning('## STAGE 2: All optimisations failed')
-      final_params <- NULL
+      params_final <- NULL
     }
     else{
       
@@ -246,31 +245,31 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                        paste(final_score$group[is.na(final_score$s)], collapse = " ")))
       }  
     
-      final_params <- 
-        stage2_params[[final_score[which.min(final_score$s), 'group'][[1]]]]
+      params_final <- 
+        params_out_s2[[final_score[which.min(final_score$s), 'group'][[1]]]]
       
       echo_message('\n##  Final parameters taken from component: ', final_score[which.min(final_score$s), 'group'][[1]])
       
-      write.g3.param(final_params,
+      write.g3.param(params_final,
                      out_path,
-                     'final.params',
+                     'params,final',
                      add_parscale = use_parscale)
       
       ## Write the calculated and approximated weights to file
       approx_weights %>% 
         dplyr::select(comp, approx_weight = weight) %>% 
         dplyr::full_join(
-          final_params %>% 
+          params_final %>% 
             dplyr::filter(grepl('_weight$', .$switch)) %>% 
             dplyr::select(comp = switch, weight = value) %>% 
             dplyr::mutate(weight = unlist(weight))
-        ) %>% 
-        write.g3.file(out_path, 'final.weights')
+        , by = 'comp') %>% 
+        write.g3.file(out_path, 'weights.final')
       
     }
   }
-  save(final_params, file = file.path(out_path, 'final_params.Rdata'))
-  return(final_params)  
+  save(params_final, file = file.path(out_path, 'params_final.Rdata'))
+  return(params_final)  
 }
 
 #' @export
