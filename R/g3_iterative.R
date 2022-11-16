@@ -252,7 +252,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       
       write.g3.param(params_final,
                      out_path,
-                     'params,final',
+                     'params.final',
                      add_parscale = use_parscale)
       
       ## Write the calculated and approximated weights to file
