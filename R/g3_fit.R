@@ -220,13 +220,13 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   ## Stock-recruitment
   ## ---------------------------------------------------------------------------
   
-  if (any(grepl('detail_(.+)__renewalnum$', names(tmp)))){
+  if (any(grepl('detail_(.+)__(spawnednum$|renewalnum$)', names(tmp)))){
     
     stock.recruitment <-
-      tmp[grepl('detail_(.+)__renewalnum$', names(tmp))] %>% 
+      tmp[grepl('detail_(.+)__(spawnednum$|renewalnum$)', names(tmp))] %>% 
       purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>% 
       dplyr::bind_rows(.id = 'comp') %>% 
-      dplyr::mutate(stock = gsub('detail_(.+)__renewalnum$', '\\1', .data$comp),
+      dplyr::mutate(stock = gsub('detail_(.+)__(spawnednum$|renewalnum$)', '\\1', .data$comp),
                     age = gsub('age', '', .data$age) %>% as.numeric()) %>% 
       extract_year_step() %>%
       dplyr::group_by(.data$stock) %>% 
