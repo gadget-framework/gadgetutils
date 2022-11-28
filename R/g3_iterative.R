@@ -9,6 +9,7 @@
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @param shortcut If TRUE, weights for each component will be approximated and a final optimisation performed
+#' @param cv_floor Minimum value of survey (adist_surveyindices) CV, applied prior to second stage of iterations
 #' @return Final set of parameters
 #' @importFrom rlang .data
 #' @importFrom stats optim
@@ -19,7 +20,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                          use_parscale = TRUE,
                          method = 'BFGS',
                          control = list(),
-                         shortcut = FALSE){
+                         shortcut = FALSE,
+                         cv_floor = 0){
   
   out_path <- file.path(gd, wgts)
   if (!dir.exists(out_path)) dir.create(out_path, recursive = TRUE)
@@ -153,7 +155,9 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     write.g3.file(ss_s1$SS_norm, out_path, 'lik.comp.score.norm.stage1')
     
     ## Update the parameters
-    params_in_s2 <- g3_update_weights(lik_s1, attr(params_in_s1, 'grouping'))
+    params_in_s2 <- g3_update_weights(lik_s1, 
+                                      attr(params_in_s1, 'grouping'),
+                                      cv_floor)
     
     ## Identify any failed components
     failed_components <- find_failed(lik_s1)
@@ -374,7 +378,7 @@ g3_lik_out <- function(model, param){
 }
 
 #' @export
-g3_update_weights <- function(lik_out_list, grouping){
+g3_update_weights <- function(lik_out_list, grouping, cv_floor){
   
   ## Calculate new weights
   weights <- 
@@ -391,8 +395,20 @@ g3_update_weights <- function(lik_out_list, grouping){
     dplyr::filter(!is.na(match)) %>% 
     dplyr::select(-match) %>% 
     dplyr::mutate(value = ifelse(.data$weight == 0, 0, .data$value),
-                  weight = ifelse(.data$value == 0, 0, .data$df/.data$value),
-                  param_name = paste0(.data$comp, '_weight')) 
+                  variance = .data$value/.data$df)
+  
+  ## Apply CV floor
+  weights <- 
+    weights %>% 
+    mutate(variance = ifelse(grepl('^adist', .data$comp),
+                             pmax(.data$variance, cv_floor),
+                             .data$variance))
+  
+  ## Update weights
+  weights <- 
+    weights %>% 
+    mutate(weight = ifelse(.data$value == 0, 0, 1/.data$variance),
+           param_name = paste0(.data$comp, '_weight')) 
   
   ## Merge into parameters
   params <- 
