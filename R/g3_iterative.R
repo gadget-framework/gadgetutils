@@ -10,6 +10,7 @@
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @param shortcut If TRUE, weights for each component will be approximated and a final optimisation performed
 #' @param cv_floor Minimum value of survey (adist_surveyindices) CV, applied prior to second stage of iterations
+#' @param resume_final Logical value. If TRUE the re-weighting procedure starts at the second stage.
 #' @return Final set of parameters
 #' @importFrom rlang .data
 #' @importFrom stats optim
@@ -21,7 +22,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                          method = 'BFGS',
                          control = list(),
                          shortcut = FALSE,
-                         cv_floor = 0){
+                         cv_floor = 0,
+                         resume_final = FALSE){
   
   out_path <- file.path(gd, wgts)
   if (!dir.exists(out_path)) dir.create(out_path, recursive = TRUE)
@@ -111,91 +113,103 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                      add_parscale = use_parscale)
     }
     
-    ## -------------- Run first stage of iterative re-weighting  -----------------
+    ## -------------- Should we skip the first round of optimisation?
     
-    echo_message('##  STAGE 1 OPTIMISATION\n')
-    params_out_s1 <- parallel::mclapply(stats::setNames(names(params_in_s1), 
-                                                        names(params_in_s1)),
-                                        function(x){
-                                          g3_optim(model = model,
-                                                   params = params_in_s1[[x]],
-                                                   use_parscale = use_parscale,
-                                                   method = method,
-                                                   control = control,
-                                                   print_status = TRUE,
-                                                   print_id = x)
+    if (!resume_final){
+      
+      ## -------------- Run first stage of iterative re-weighting  -----------------
+      
+      echo_message('##  STAGE 1 OPTIMISATION\n')
+      params_out_s1 <- parallel::mclapply(stats::setNames(names(params_in_s1), 
+                                                          names(params_in_s1)),
+                                          function(x){
+                                            g3_optim(model = model,
+                                                     params = params_in_s1[[x]],
+                                                     use_parscale = use_parscale,
+                                                     method = method,
+                                                     control = control,
+                                                     print_status = TRUE,
+                                                     print_id = x)
                                           },
-                                        mc.cores = parallel::detectCores())
-    
-    save(params_out_s1, file = file.path(out_path, 'params_out_s1.Rdata'))
-    
-    ## Summary of optimisation settings and run details
-    lapply(params_out_s1, function(x) attr(x, 'summary')) %>% 
-      dplyr::bind_rows(.id = 'group') %>% 
-      write.g3.file(out_path, 'optim.summary.stage1')
-    
-    for (i in names(params_out_s1)){
-      attr(params_out_s1[[i]], 'summary') <- NULL
-      write.g3.param(params_out_s1[[i]],
-                     out_path,
-                     paste0('params.out.stage1.', i),
-                     add_parscale = use_parscale)
-    }
-    
-    ## ------------ Update weights for second round of re-weighting --------------
-    
-    ## Update weights for second round of re-weighting
-    lik_s1 <- parallel::mclapply(params_out_s1, 
-                                 function(x){ g3_lik_out(model, x) }, 
-                                 mc.cores = parallel::detectCores())
-    
-    ## Calculate and write SS
-    ss_s1 <- tabulate_SS(lik_s1, attr(params_in_s1, 'grouping'))
-    write.g3.file(ss_s1$SS, out_path, 'lik.comp.score.stage1')
-    write.g3.file(ss_s1$SS_norm, out_path, 'lik.comp.score.norm.stage1')
-    
-    ## Update the parameters
-    params_in_s2 <- g3_update_weights(lik_s1, 
-                                      attr(params_in_s1, 'grouping'),
-                                      cv_floor)
-    
-    ## Identify any failed components
-    failed_components <- find_failed(lik_s1)
-    
-    ## Update params and weights for failed components
-    if (length(failed_components > 0)){
+                                          mc.cores = parallel::detectCores())
       
-      ## Find the weights for the failed component
-      bad_pars <- 
-        attr(params_in_s1, 'grouping') %>%
-        dplyr::select(-comp) %>% 
-        dplyr::rename(comp = param_name) %>% 
-        dplyr::left_join(approx_weights, by = 'comp') %>% 
-        dplyr::filter(group %in% failed_components) %>% 
-        dplyr::select(comp, weight)   
+      save(params_out_s1, file = file.path(out_path, 'params_out_s1.Rdata'))
       
-      ## Merge the approximated weight into each component
-      params_in_s2 <- 
-        lapply(params_in_s2, function(x){
-          x$value[bad_pars$comp] <- bad_pars$weight
-          return(x)
-        })
+      ## Summary of optimisation settings and run details
+      lapply(params_out_s1, function(x) attr(x, 'summary')) %>% 
+        dplyr::bind_rows(.id = 'group') %>% 
+        write.g3.file(out_path, 'optim.summary.stage1')
       
-      ## Now adjust the parameters
-      for (i in seq_along(failed_components)){
-        warning(paste0('## STAGE 1: optimisation for component ', i, ' failed, therefore corresponding weights are approximated using the shortcut method and optimised parameter values are taken from the initial values'))
-        ## Identify the NA params
-        na_params <- params_in_s2[[i]][is.na(params_in_s2[[i]]$value), 'switch']
-        ## Merge values from previous param set
-        params_in_s2[[i]]$value[na_params] <- params_in_s1[[i]]$value[na_params]
+      for (i in names(params_out_s1)){
+        attr(params_out_s1[[i]], 'summary') <- NULL
+        write.g3.param(params_out_s1[[i]],
+                       out_path,
+                       paste0('params.out.stage1.', i),
+                       add_parscale = use_parscale)
       }
-    }
+      
+      ## ------------ Update weights for second round of re-weighting --------------
+      
+      ## Update weights for second round of re-weighting
+      lik_s1 <- parallel::mclapply(params_out_s1, 
+                                   function(x){ g3_lik_out(model, x) }, 
+                                   mc.cores = parallel::detectCores())
+      
+      ## Calculate and write SS
+      ss_s1 <- tabulate_SS(lik_s1, attr(params_in_s1, 'grouping'))
+      write.g3.file(ss_s1$SS, out_path, 'lik.comp.score.stage1')
+      write.g3.file(ss_s1$SS_norm, out_path, 'lik.comp.score.norm.stage1')
+      
+      ## Update the parameters
+      params_in_s2 <- g3_update_weights(lik_s1, 
+                                        attr(params_in_s1, 'grouping'),
+                                        cv_floor)
+      
+      ## Identify any failed components
+      failed_components <- find_failed(lik_s1)
+      
+      ## Update params and weights for failed components
+      if (length(failed_components > 0)){
         
-    for (i in names(params_in_s2)){
-      write.g3.param(params_in_s2[[i]],
-                     out_path,
-                     paste0('params.in.stage2.', i),
-                     add_parscale = use_parscale)
+        ## Find the weights for the failed component
+        bad_pars <- 
+          attr(params_in_s1, 'grouping') %>%
+          dplyr::select(-comp) %>% 
+          dplyr::rename(comp = param_name) %>% 
+          dplyr::left_join(approx_weights, by = 'comp') %>% 
+          dplyr::filter(group %in% failed_components) %>% 
+          dplyr::select(comp, weight)   
+        
+        ## Merge the approximated weight into each component
+        params_in_s2 <- 
+          lapply(params_in_s2, function(x){
+            x$value[bad_pars$comp] <- bad_pars$weight
+            return(x)
+          })
+        
+        ## Now adjust the parameters
+        for (i in seq_along(failed_components)){
+          warning(paste0('## STAGE 1: optimisation for component ', i, ' failed, therefore corresponding weights are approximated using the shortcut method and optimised parameter values are taken from the initial values'))
+          ## Identify the NA params
+          na_params <- params_in_s2[[i]][is.na(params_in_s2[[i]]$value), 'switch']
+          ## Merge values from previous param set
+          params_in_s2[[i]]$value[na_params] <- params_in_s1[[i]]$value[na_params]
+        }
+      }
+      
+      for (i in names(params_in_s2)){
+        write.g3.param(params_in_s2[[i]],
+                       out_path,
+                       paste0('params.in.stage2.', i),
+                       add_parscale = use_parscale)
+      }  
+      
+    }
+    else{
+      
+      echo_message('##  FIRST ROUND OF OPTIMISATION SKIPPED \n')
+      params_in_s2 <- params_in_s1
+      
     }
     
     ## ----------- Second round of re-weighting ----------------------------------

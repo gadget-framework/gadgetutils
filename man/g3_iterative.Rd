@@ -13,7 +13,9 @@ g3_iterative(
   use_parscale = TRUE,
   method = "BFGS",
   control = list(),
-  shortcut = FALSE
+  shortcut = FALSE,
+  cv_floor = 0,
+  resume_final = FALSE
 )
 }
 \arguments{
@@ -34,6 +36,10 @@ g3_iterative(
 \item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
 
 \item{shortcut}{If TRUE, weights for each component will be approximated and a final optimisation performed}
+
+\item{cv_floor}{Minimum value of survey (adist_surveyindices) CV, applied prior to second stage of iterations}
+
+\item{resume_final}{Logical value. If TRUE the re-weighting procedure starts at the second stage.}
 }
 \value{
 Final set of parameters
