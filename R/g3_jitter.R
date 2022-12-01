@@ -4,11 +4,9 @@
 #' @param jitter_fraction The fraction of jittering for a value
 #' @return Jittered set of parameters
 #' @export
-jitter_param <- function(param, jitter_fraction = 0.1){
+jitter_param <- function(param, jitter_fraction = 0.05){
   
   ## A function to jitter initial parameters
-  ## Mimics SS model approach
-  
   if (is.infinite(param$lower) || is.infinite(param$upper)){
     warning(paste("Parameter", names(param), "not jittered as bounds are infinite."))
     return(param)
@@ -17,36 +15,31 @@ jitter_param <- function(param, jitter_fraction = 0.1){
     stop("The jitter_fraction parameter should be greater than zero.")
   }
   
-  lp <- 0.001
-  up <- 1 - lp
-  mu <- (param$lower + param$upper)*0.5
+  ## Is the parameter exponentiated
+  exp_param <- grepl('_exp$', param$switch)
   
-  ## Assume normal dist and thus symetrical, SD:
-  dsd <- (param$lower - mu)/qnorm(lp)
+  old_val <- param$value[[1]]
+  if (exp_param) old_val <- exp(old_val)
   
-  ## Parameter value in normal space, aka Jitter shift term
-  jst <- pnorm(param$value[[1]], mu, dsd)
+  ## Jitter shift term using a uniform distribution centered
+  jst <- runif(n = 1, min = 0 - jitter_fraction, max = 0 + jitter_fraction)
+  new_val <- old_val + jst * old_val
   
-  ## Pick a random value
-  new.pr <- runif(n = 1, 
-                  min = jst - jitter_fraction, 
-                  max = jst + jitter_fraction)
+  ## Transform back if exponentiated
+  if (exp_param) new_val <- log(new_val)
   
   ## Within bounds?
-  if (new.pr > up){
-    warning(paste0('The jittered param ', param$switch, 'was above the upper bound and therefore adjusted to within the bounds'))
-    new.pr <- up - 0.1*(up - jst)
+  if (new_val > param$upper){
+    warning(paste0('The jittered param ', param$switch, 'was above the upper bound'))
   } 
   else{
-    if (new.pr < lp){
-      warning(paste0('The jittered param ', param$switch, 'was below the lower bound and therefore adjusted to within the bounds'))
-      new.pr <- lp + 0.1*(jst -lp)  
+    if (new_val < param$lower){
+      warning(paste0('The jittered param ', param$switch, 'was below the lower bound'))
     } 
   }
-  
-  
+
   ## Convert to value
-  param$value[[1]] <- qnorm(new.pr, mu, dsd)
+  param$value[[1]] <- new_val
   return(param)
   
 }
