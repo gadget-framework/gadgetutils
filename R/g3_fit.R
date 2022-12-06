@@ -363,7 +363,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
                      by = c('year', 'area', 'fleet')) %>%
     dplyr::group_by(.data$year, .data$step, .data$area, .data$fleet) %>%
     dplyr::mutate(amount = ifelse(is.na(.data$amount), 0, .data$amount),
-                  harv.rate = .data$amount / .data$harv.bio)
+                  harv.rate = .data$amount / .data$harv.bio) %>% 
+    dplyr::ungroup()
   
   ## Suitability over fleets                 
   harv.suit <- 
@@ -412,7 +413,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     catchdist.fleets = catchdist.fleets,
     suitability = predator.prey %>% 
       dplyr::select(.data$year,.data$step,area=.data$area, stock=.data$prey,
-                    fleet=.data$predator,.data$length,.data$suit),
+                    fleet=.data$predator,.data$length,.data$suit) %>% 
+      dplyr::ungroup(),
     likelihood = likelihood,
     stock.prey = stock.prey,
     stock.std = stock.std,
