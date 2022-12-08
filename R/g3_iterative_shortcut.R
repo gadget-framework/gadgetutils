@@ -40,7 +40,6 @@ estimate_weights_cdist <- function(dat){
     group_by(time) %>% 
     mutate(p = Freq/sum(Freq)) 
   
-  if ()
   tmp %>% 
     left_join(tmp %>% 
                 group_by(age,length) %>% 
