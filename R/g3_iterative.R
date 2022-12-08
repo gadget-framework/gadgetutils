@@ -414,7 +414,7 @@ g3_update_weights <- function(lik_out_list, grouping, cv_floor){
   ## Apply CV floor
   weights <- 
     weights %>% 
-    mutate(variance = ifelse(grepl('^adist', .data$comp),
+    mutate(variance = ifelse(grepl('_surveyindices_', .data$comp),
                              pmax(.data$variance, cv_floor),
                              .data$variance))
   
