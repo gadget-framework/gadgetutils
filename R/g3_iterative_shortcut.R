@@ -14,13 +14,13 @@ estimate_weights <- function(model, params){
   
   ## Catch distribution weights
   out <- 
-    lapply(res[grepl('^cdist_(.+)_obs__(wgt$|num$)', names(res))],
+    lapply(res[grepl('^cdist_(sumofsquares|multinomial)_(.+)_obs__(wgt$|num$)', names(res))],
            function(x){
              estimate_weights_cdist(as.data.frame.table(x, stringsAsFactors = FALSE))
            }) %>% 
     dplyr::bind_rows(.id = 'comp') %>% 
     bind_rows(
-      lapply(res[grepl('^adist_(.+)_obs__(wgt$|num$)', names(res))],
+      lapply(res[grepl('(^adist|^cdist)_surveyindices_(.+)_obs__(wgt$|num$)', names(res))],
              function(x){
                estimate_weights_adist(as.data.frame.table(x, stringsAsFactors = FALSE))
              }) %>% 
@@ -40,6 +40,7 @@ estimate_weights_cdist <- function(dat){
     group_by(time) %>% 
     mutate(p = Freq/sum(Freq)) 
   
+  if ()
   tmp %>% 
     left_join(tmp %>% 
                 group_by(age,length) %>% 
