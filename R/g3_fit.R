@@ -429,6 +429,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   
 }
 
+#' @export
 extract_year_step <- function(data){
   
   data %>% 

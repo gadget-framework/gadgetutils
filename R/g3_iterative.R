@@ -2,7 +2,7 @@
 #'
 #' @param gd Directory to store output
 #' @param wgts Directory name within gd to store run outputs
-#' @param model A G3 model, produced by g3_to_r()
+#' @param model A G3 model, produced by g3_to_r() or g3_tmb_adfun()
 #' @param params.in Initial parameters to use with the model
 #' @param grouping List of component names to optmise together
 #' @param use_parscale Logical indicating whether optim(control$parscale) should be used
@@ -48,7 +48,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     else return(NULL)
     
   }
-  
+
   ## ---------------------------------------------------------------------------
   ## APPROXIMATING WEIGHTS AND RUNNING THE OPTIMISATION
   ## ---------------------------------------------------------------------------
@@ -414,14 +414,14 @@ g3_update_weights <- function(lik_out_list, grouping, cv_floor){
   ## Apply CV floor
   weights <- 
     weights %>% 
-    mutate(variance = ifelse(grepl('_surveyindices_', .data$comp),
+    dplyr::mutate(variance = ifelse(grepl('_surveyindices_', .data$comp),
                              pmax(.data$variance, cv_floor),
                              .data$variance))
   
   ## Update weights
   weights <- 
     weights %>% 
-    mutate(weight = ifelse(.data$value == 0, 0, 1/.data$variance),
+    dplyr::mutate(weight = ifelse(.data$value == 0, 0, 1/.data$variance),
            param_name = paste0(.data$comp, '_weight')) 
   
   ## Merge into parameters
