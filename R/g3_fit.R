@@ -92,7 +92,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
                     length = .data$avg.length) %>%
       dplyr::ungroup() %>% 
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                    matches("stock|stock_re"), .data$length, .data$age, 
+                    dplyr::matches("stock|stock_re"), .data$length, .data$age, 
                     .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
     
   }else{
@@ -119,7 +119,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
                                  paste0('age', .data$lower_age), 
                                  paste0('all', .data$lower_age))) %>% 
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                    matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
+                    dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
                     .data$obs, .data$total.catch, .data$observed,
                     .data$pred, .data$total.pred, .data$predicted, .data$residuals)
     
