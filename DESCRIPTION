@@ -21,4 +21,5 @@ Imports:
     rlang,
     stringr,
     tibble,
-    tidyr
+    tidyr,
+    tidyselect
