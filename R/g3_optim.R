@@ -59,6 +59,9 @@ g3_optim <- function(model,
   ## Using parscale?
   if (use_parscale){
     control <- c(control, list(parscale = gadget3::g3_tmb_parscale(params)))
+    if(any(is.na(gadget3::g3_tmb_parscale(params)))){
+      stop('Error NAs detected in parscale')
+    }
   }
   
   ## Run optimiser
@@ -67,6 +70,7 @@ g3_optim <- function(model,
     
     optim(par = obj_fun$par, fn = obj_fun$fn, gr = obj_fun$gr,
           method = method,
+          
           lower = parlow, upper = parhigh,
           control = control)
     
