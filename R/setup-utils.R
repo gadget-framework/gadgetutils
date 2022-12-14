@@ -200,7 +200,8 @@ model_actions <- function(imm,
                           parametric_sd = FALSE,
                           exp_params = c(),
                           tv_params = c(),
-                          by_age_params = c()){
+                          by_age_params = c(),
+                          recruiting=!mature){
   
 
   ## Helper for g3_parameterized that modifies the name of a parameter if it is being exponentiated
@@ -309,8 +310,9 @@ model_actions <- function(imm,
     ## AGING
     g3a_age(stock, output_stocks = output_stock)
   )
+
   
-  if (!mature){
+  if(recruitment){
     
     stock_actions <- c(stock_actions, list(
       
@@ -326,7 +328,13 @@ model_actions <- function(imm,
                               beta_f = wbeta,
                               run_f = gadget3:::f_substitute(
                                 ~cur_step == 1 && age == minage && cur_time > 0 && !cur_year_projection,
-                                list(minage = gadget3:::g3_step(~stock_with(imm, imm__minage))))),
+                                list(minage = gadget3:::g3_step(~stock_with(imm, imm__minage)))))
+    ))
+  }
+    
+  if (!mature){
+    
+    stock_actions <- c(stock_actions, list(
       
       ## GROWTH AND MATURATION
       g3a_growmature(imm,
