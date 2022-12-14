@@ -312,7 +312,7 @@ model_actions <- function(imm,
   )
 
   
-  if(recruitment){
+  if(recruiting){
     
     stock_actions <- c(stock_actions, list(
       
