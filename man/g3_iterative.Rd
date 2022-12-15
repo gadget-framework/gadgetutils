@@ -23,7 +23,7 @@ g3_iterative(
 
 \item{wgts}{Directory name within gd to store run outputs}
 
-\item{model}{A G3 model, produced by g3_to_r()}
+\item{model}{A G3 model, produced by g3_to_r() or g3_tmb_adfun()}
 
 \item{params.in}{Initial parameters to use with the model}
 

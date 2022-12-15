@@ -84,11 +84,11 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   
   ## Maturity
   ## TO-DO ADD LOWER AND UPPER
-  if (any(grepl('mat', dat$name))){
+  if (any(grepl('mat|sex', dat$name))){
     
     stockdist <- 
       dat %>% 
-      dplyr::filter(grepl('mat', .data$name)) %>%
+      dplyr::filter(grepl('mat|sex', .data$name)) %>%
       dplyr::group_by(.data$year, .data$step, .data$area, .data$length, .data$age, .data$name) %>%
       dplyr::mutate(pred.ratio = .data$predicted / sum(.data$predicted, na.rm = TRUE),
                     obs.ratio = .data$observed / sum(.data$observed, na.rm = TRUE),
