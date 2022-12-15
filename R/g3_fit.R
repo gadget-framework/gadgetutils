@@ -46,6 +46,9 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     model_output <- model(params)
     tmp <- attributes(model_output)
   }
+  
+  ## Calculate the step size as a proportion
+  step_size <- 1/length(environment(gadget3:::g3_collate(attr(model, 'actions'))$`000`)$step_lengths)
 
   ##############################################################################
   ##############################################################################
@@ -319,7 +322,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     dplyr::left_join(stock.std %>% 
                        dplyr::select(.data$year, .data$step, .data$area, .data$stock, .data$age, .data$number),
                      by = c("year", "step", "area", "stock", "age")) %>% 
-    dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/0.25) 
+    dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/step_size) 
   
   ## Predator prey
   predator.prey <- 
@@ -329,7 +332,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     dplyr::summarise(number_consumed = sum(.data$number_consumed),
                      biomass_consumed = sum(.data$biomass_consumed)) %>% 
     dplyr::left_join(stock.full, by = c("year", "step", "area", "stock", "length")) %>% 
-    dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/0.25) %>% 
+    dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/step_size) %>% 
     dplyr::ungroup() %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$fleet) %>%
     dplyr::mutate(suit = .data$mortality / max(.data$mortality),
