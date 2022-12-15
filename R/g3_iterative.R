@@ -85,7 +85,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     ## -------------------------------------------------------------------------
     
     ## Compile and generate TMB ADFun (see ?TMB::MakeADFun)
-    obj_fun <- gadget3::g3_tmb_adfun(model, tmb_param)
+    obj_fun <- gadget3::g3_tmb_adfun(model, params.in)
     
     ## -------------- Iterative re-weighting setup -------------------------------
     
@@ -174,11 +174,11 @@ g3_iterative <- function(gd, wgts = 'WGTS',
         ## Find the weights for the failed component
         bad_pars <- 
           attr(params_in_s1, 'grouping') %>%
-          dplyr::select(-comp) %>% 
-          dplyr::rename(comp = param_name) %>% 
+          dplyr::select(-.data$comp) %>% 
+          dplyr::rename(comp = .data$param_name) %>% 
           dplyr::left_join(approx_weights, by = 'comp') %>% 
-          dplyr::filter(group %in% failed_components) %>% 
-          dplyr::select(comp, weight)   
+          dplyr::filter(.data$group %in% failed_components) %>% 
+          dplyr::select(.data$comp, .data$weight)   
         
         ## Merge the approximated weight into each component
         params_in_s2 <- 
@@ -285,12 +285,12 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       
       ## Write the calculated and approximated weights to file
       approx_weights %>% 
-        dplyr::select(comp, approx_weight = weight) %>% 
+        dplyr::select(.data$comp, approx_weight = .data$weight) %>% 
         dplyr::full_join(
           params_final %>% 
-            dplyr::filter(grepl('_weight$', .$switch)) %>% 
-            dplyr::select(comp = switch, weight = value) %>% 
-            dplyr::mutate(weight = unlist(weight))
+            dplyr::filter(grepl('_weight$', .data$switch)) %>% 
+            dplyr::select(comp = .data$switch, weight = .data$value) %>% 
+            dplyr::mutate(weight = unlist(.data$weight))
         , by = 'comp') %>% 
         write.g3.file(out_path, 'weights.final')
       
@@ -336,7 +336,7 @@ g3_iterative_setup <- function(lik_out,
   
   out.params <- 
     ldf %>% 
-    split(.$group) %>% 
+    split(.data$group) %>% 
     purrr::map(
       function(x){
         param$value[x$param_name] <- 
@@ -400,10 +400,10 @@ g3_update_weights <- function(lik_out_list, grouping, cv_floor){
     dplyr::bind_rows(.id = 'group') %>% 
     dplyr::full_join(
       grouping %>% 
-        dplyr::select(-comp) %>% 
-        dplyr::rename(comp = param_name) %>% 
+        dplyr::select(-.data$comp) %>% 
+        dplyr::rename(comp = .data$param_name) %>% 
         dplyr::mutate(match = 1,
-                      comp = gsub('_weight$', '', comp)),
+                      comp = gsub('_weight$', '', .data$comp)),
       by = c('group', 'comp')
       ) %>% 
     dplyr::filter(!is.na(match)) %>% 
@@ -442,7 +442,7 @@ g3_iterative_final <- function(lik_out_list){
   weights <- 
     lik_out_list %>% 
     dplyr::bind_rows(.id = 'group') %>% 
-    dplyr::mutate(value = ifelse(weight == 0, 0, value)) %>% 
+    dplyr::mutate(value = ifelse(.data$weight == 0, 0, .data$value)) %>% 
     dplyr::group_by(.data$comp) %>% 
     dplyr::filter(.data$value == min(.data$value, na.rm = TRUE)) %>% 
     dplyr::select(.data$comp, .data$df, .data$value) %>% 
@@ -470,7 +470,7 @@ tabulate_SS <- function(lik.out, grouping){
     lik.out %>% 
     dplyr::bind_rows(.id = '.group') %>% 
     dplyr::mutate(comp = gsub('(cdist|adist)_([A-Za-z]+)_(.+)', '\\3', .data$comp)) %>% 
-    dplyr::select(.data$.group, .data$comp, .data$value) %>% 
+    dplyr::select(.data$group, .data$comp, .data$value) %>% 
     tidyr::pivot_wider(names_from = .data$comp, values_from = .data$value, names_sort = TRUE) %>% 
     dplyr::left_join(group_list %>% 
                        purrr::map(~tibble::tibble(.id = paste(.$comp, collapse = '.'))) %>% 
@@ -478,7 +478,7 @@ tabulate_SS <- function(lik.out, grouping){
     dplyr::relocate(.data$.id) %>% 
     as.data.frame() 
   
-  rownames(SS) <- SS$.group
+  rownames(SS) <- SS$group
   
   ## Normalise
   SS_norm <- SS

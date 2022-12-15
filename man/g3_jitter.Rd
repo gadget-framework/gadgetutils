@@ -7,11 +7,11 @@
 g3_jitter(params, jitter_fraction = 0.1, patterns_to_ignore = "_weight")
 }
 \arguments{
+\item{params}{A g3 tmb parameter template}
+
 \item{jitter_fraction}{The fraction of jittering for a value}
 
 \item{patterns_to_ignore}{Regular expression of parameters to avoid jittering}
-
-\item{param}{A g3 tmb parameter template}
 }
 \value{
 Jittered set of parameters

@@ -13,11 +13,13 @@ init_abund(
   exp_init = FALSE,
   exp_init_scalar = FALSE,
   exp_init_f = FALSE,
-  naturalmortality = g3_parameterized("M", by_stock = TRUE)
+  naturalmortality = gadget3::g3_parameterized("M", by_stock = TRUE)
 )
 }
 \arguments{
-\item{imm}{A g3 stock object for mature specimens}
+\item{imm}{A g3 stock object for immature specimens}
+
+\item{mat}{A g3 stock object for mature specimens}
 
 \item{comp_id}{Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature}
 

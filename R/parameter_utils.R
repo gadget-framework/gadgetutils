@@ -15,7 +15,7 @@ stock_species <- function(stock){
 #' @export
 #' @export
 g3_stock_name <- function(stock, id = 'full'){
-  stopifnot(gadget3:::g3_is_stock(stock))
+  stopifnot(inherits(stock, 'g3_stock'))
   if(id[1] == 'full'){
     return(stock$name)
   } else if(setequal(id,intersect(id, names(stock$name_parts)))){

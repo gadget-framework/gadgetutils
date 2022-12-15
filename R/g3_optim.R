@@ -82,7 +82,7 @@ g3_optim <- function(model,
     warning(paste0('The optimisation failed', print_id))
     
     ## Construct failed fit_opt object
-    fit_opt <- list(par = g3_tmb_par(params),
+    fit_opt <- list(par = gadget3::g3_tmb_par(params),
                     counts = c(NA, NA),
                     convergence = NA,
                     value = NA)

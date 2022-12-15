@@ -14,7 +14,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   ## so model(fit$params) will work without any fiddling
   out_params <- params
   
-  if (is(model, "g3_r")) {
+  if (inherits(model, "g3_r")) {
       if (inherits(params, 'data.frame')){
         params <- params$value
       }
@@ -25,7 +25,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
       } else {
           tmp <- NULL
       }
-  } else if (is(model, "g3_cpp")) {
+  } else if (inherits(model, "g3_cpp")) {
       if (is.data.frame(params) && "report_detail" %in% names(params$switch)) {
           params['report_detail', 'value'] <- 1L
           tmp <- gadget3::g3_tmb_adfun(model, params)$report(gadget3::g3_tmb_par(params))
@@ -40,7 +40,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   if (is.null(tmp)) {
     model <- gadget3::g3_to_r(c(
       attr(model, 'actions'),
-      list(gadget3:::g3a_report_detail(attr(model, 'actions')))))
+      list(gadget3::g3a_report_detail(attr(model, 'actions')))))
     if (is.data.frame(params)) params <- params$value
     params$report_detail <- 1L
     model_output <- model(params)

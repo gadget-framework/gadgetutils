@@ -14,7 +14,8 @@ model_actions(
   parametric_sd = FALSE,
   exp_params = c(),
   tv_params = c(),
-  by_age_params = c()
+  by_age_params = c(),
+  recruiting = !mature
 )
 }
 \arguments{
@@ -28,7 +29,7 @@ model_actions(
 
 \item{comp_id}{Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature}
 
-\item{init_mode}{}
+\item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
 
 \item{parametric_sd}{Is the initial conditions stddev parameterised, or a table by age?}
 
@@ -37,6 +38,8 @@ model_actions(
 \item{tv_params}{Which parameters should be time-varying? tv_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','recl','rec.sd','mat_alpha','mat_l50','m'}
 
 \item{by_age_params}{Which parameters should be age-varying? by_age_params is a vector of parameter names, possible time-varying parameters include: 'linf','k','walpha','beta','bbin','mat_alpha','mat_l50','m'}
+
+\item{recruiting}{If TRUE, the renewal action will be added. Defaults to !mature, so it can be used to create a single non-maturing stock.}
 }
 \value{
 A list of g3 actions

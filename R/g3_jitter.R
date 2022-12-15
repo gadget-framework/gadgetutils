@@ -22,7 +22,7 @@ jitter_param <- function(param, jitter_fraction = 0.05){
   if (exp_param) old_val <- exp(old_val)
   
   ## Jitter shift term using a uniform distribution centered
-  jst <- runif(n = 1, min = 0 - jitter_fraction, max = 0 + jitter_fraction)
+  jst <- stats::runif(n = 1, min = 0 - jitter_fraction, max = 0 + jitter_fraction)
   new_val <- old_val + jst * old_val
   
   ## Transform back if exponentiated
@@ -46,7 +46,7 @@ jitter_param <- function(param, jitter_fraction = 0.05){
 
 #' Jitters a parameters values
 #'
-#' @param param A g3 tmb parameter template
+#' @param params A g3 tmb parameter template
 #' @param jitter_fraction The fraction of jittering for a value
 #' @param patterns_to_ignore Regular expression of parameters to avoid jittering
 #' @return Jittered set of parameters

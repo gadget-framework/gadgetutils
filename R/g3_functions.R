@@ -39,7 +39,7 @@ g3_retro <- function(dir, model, params, num.years = 5){
     
     ## Compile objective function
     # NB: We need to recreate the obj_fun to use new unoptimised parameters, i.e. retro_years.
-    obj_fun <- g3_tmb_adfun(tmb_model, param)
+    obj_fun <- gadget3::g3_tmb_adfun(tmb_model, param)
     
     ## Optimise model
     fit.opt <- optim(obj_fun$par,
@@ -51,7 +51,7 @@ g3_retro <- function(dir, model, params, num.years = 5){
                                     reltol = .Machine$double.eps^2))
     
     ## Output parameters
-    p <- g3_tmb_relist(param, fit.opt$par)
+    p <- gadget3::g3_tmb_relist(param, fit.opt$par)
     param$value[names(p)] <- p
     return(param)
 
