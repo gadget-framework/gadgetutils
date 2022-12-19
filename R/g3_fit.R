@@ -133,25 +133,24 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   
   ## -------------------------------------------------------------------------
   
-  ## Survey indices
-  ## TODO add parameters
-  if (any(grepl('^adist_.+__num$|^adist_.+__wgt$', names(tmp)))){
+  ## Survey or other indices 
+  if (any(grepl('^.+_surveyindices_.+__num$|^.+_surveyindices_.+__wgt$', names(tmp)))){
     
     sidat_params <- 
-      tmp[grepl('^adist_.+__params$', names(tmp))] %>% 
+      tmp[grepl('^.+_surveyindices_.+__params$', names(tmp))] %>% 
       purrr::map(stats::setNames, c('alpha', 'beta')) %>% 
       dplyr::bind_rows(.id = 'id') %>%
-      dplyr::mutate(id = gsub('^adist_|_model__params$', '', .data$id))
+      dplyr::mutate(id = gsub('^cdist_|^adist_|_model__params$', '', .data$id))
     
     sidat <- 
-      tmp[grep('^adist_.+__num$|^adist_.+__wgt$',names(tmp))] %>%
+      tmp[grep('(^adist|^cdist)_surveyindices_.+__num$|^dist_surveyindices_.+__wgt$',names(tmp))] %>%
       purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
       dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(index = gsub('(adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2', .data$comp),
-                    type = gsub('(adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
-                    fleet = gsub('(adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
-                    origin = gsub('(adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\5', .data$comp),
-                    name = gsub('(adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2.\\4', .data$comp),
+      dplyr::mutate(index = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2', .data$comp),
+                    type = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
+                    fleet = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
+                    origin = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\5', .data$comp),
+                    name = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2.\\4', .data$comp),
                     #length = gsub('len', '', .data$length) %>% as.numeric(),
                     area = as.numeric(as.factor(.data$area))) %>%
       split_length() %>% 
