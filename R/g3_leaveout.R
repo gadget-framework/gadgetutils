@@ -12,7 +12,7 @@
 #' @param ncores The number of cores to use, defaults to the number available
 #' @return A data.frame with the nll for each optimisation
 #' @export
-g3_leaveout <- function(gd, l1o = 'L1O', 
+g3_leaveout <- function(gd, l1o = 'LOCV', 
                         model, params,
                         grouping = list(),
                         use_parscale = TRUE,
