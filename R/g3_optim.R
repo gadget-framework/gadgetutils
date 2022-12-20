@@ -105,7 +105,7 @@ g3_optim <- function(model,
   attributes(params)$summary <- 
     data.frame(method = method,
                maxiter = control$maxit,
-               reltol = control$reltol,
+               reltol = format(control$reltol, scientific = TRUE),
                optim_complete = ifelse(model.opt.fail, 0, 1),
                fn_calls = fit_opt$counts[1],
                gd_calls = fit_opt$counts[2],

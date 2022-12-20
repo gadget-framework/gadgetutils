@@ -21,7 +21,7 @@ write.g3.file <- function(obj, gd, file_name){
   
   outfile <- file(file.path(gd, file_name), 'w')
   utils::capture.output(print(format(obj, 
-                                     scientific = FALSE, 
+                                     #scientific = TRUE, 
                                      drop0trailing = TRUE), 
                               path = gd, 
                               row.names = FALSE,

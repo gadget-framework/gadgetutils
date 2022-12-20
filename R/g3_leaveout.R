@@ -108,8 +108,8 @@ g3_leaveout <- function(gd, l1o = 'LOCV',
   summary <- lapply(names(all_comps), function(x){
     return(
       cbind(data.frame(components_left_out = paste(all_comps[[x]], collapse = ', '),
-                       group = x, stringsAsFactors = FALSE),
-            attr(params_out[[x]], 'summary'))
+                       group = x),
+            attr(params_out[[x]], 'summary'), stringsAsFactors = FALSE)
     )
   })
   
