@@ -56,12 +56,13 @@ estimate_weights_cdist <- function(dat){
 
 #' @export
 estimate_weights_adist <- function(dat){
-  
-  dat %>% 
+  tmp <-   
+    dat %>% 
     extract_year_step() %>% 
-    dplyr::mutate(time = .data$year) %>% ## TODO Mutate time to include 'step'
+    dplyr::mutate(time = .data$year)  
+  tmp %>% ## TODO Mutate time to include 'step'
     modelr::add_predictions(
-      model = stats::loess(log(.data$Freq) ~ time, data=.data, span = 0.25)) %>% 
+      model = stats::loess(log(Freq) ~ time, span = 0.25,data=tmp)) %>% 
     dplyr::summarise(ss=sum((log(.data$Freq)-.data$pred)^2)/dplyr::n())
 }
 
