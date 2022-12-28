@@ -335,8 +335,7 @@ g3_iterative_setup <- function(lik_out,
   param$value[ldf$param_name] <- ldf$init_weight
   
   out.params <- 
-    ldf %>% 
-    split(.data$group) %>% 
+    split(ldf,ldf$group) %>% 
     purrr::map(
       function(x){
         param$value[x$param_name] <- 
