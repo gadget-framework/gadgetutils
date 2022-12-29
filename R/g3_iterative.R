@@ -473,7 +473,7 @@ tabulate_SS <- function(lik.out, grouping){
     tidyr::pivot_wider(names_from = .data$comp, values_from = .data$value, names_sort = TRUE) %>% 
     dplyr::left_join(group_list %>% 
                        purrr::map(~tibble::tibble(.id = paste(.$comp, collapse = '.'))) %>% 
-                       dplyr::bind_rows(.id = '.group'), by = '.group') %>% 
+                       dplyr::bind_rows(.id = 'group'), by = 'group') %>% 
     dplyr::relocate(.data$.id) %>% 
     as.data.frame() 
   
