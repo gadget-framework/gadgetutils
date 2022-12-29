@@ -467,7 +467,7 @@ tabulate_SS <- function(lik.out, grouping){
   
   SS <- 
     lik.out %>% 
-    dplyr::bind_rows(.id = '.group') %>% 
+    dplyr::bind_rows(.id = 'group') %>% 
     dplyr::mutate(comp = gsub('(cdist|adist)_([A-Za-z]+)_(.+)', '\\3', .data$comp)) %>% 
     dplyr::select(.data$group, .data$comp, .data$value) %>% 
     tidyr::pivot_wider(names_from = .data$comp, values_from = .data$value, names_sort = TRUE) %>% 
