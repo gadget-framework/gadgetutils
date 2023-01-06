@@ -89,33 +89,34 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
     ## -------------- Iterative re-weighting setup -------------------------------
     
-    ## Run the R model to get the initial results
-    lik_init <- g3_lik_out(model, params.in)
-    
-    if (is.na(attr(lik_init, 'nll'))){
-      stop('The gadget model did not run')
-    }
-    
-    write.g3.file(lik_init, out_path, 'lik.init')
-    
-    ## Setup the initial parameter files
-    params_in_s1 <- g3_iterative_setup(lik_init[lik_init$weight > 0,],
-                                       grouping = grouping)
-    
-    ## Write groupings 
-    write.g3.file(attr(params_in_s1, 'grouping'), out_path, 'lik.groupings')
-    
-    ## Initial parameters (weights included in parameter template)
-    for (i in names(params_in_s1)){
-      write.g3.param(params_in_s1[[i]], 
-                     out_path, 
-                     paste0('params.in.stage1.', i),
-                     add_parscale = use_parscale)
-    }
-    
-    ## -------------- Should we skip the first round of optimisation?
-    
+    ## Skip first stage if resume_final = TRUE
     if (!resume_final){
+      
+      ## Run the R model to get the initial results
+      lik_init <- g3_lik_out(model, params.in)
+    
+      if (is.na(attr(lik_init, 'nll'))){
+        stop('The gadget model did not run')
+      }
+      
+      write.g3.file(lik_init, out_path, 'lik.init')
+      
+      ## Setup the initial parameter files
+      params_in_s1 <- g3_iterative_setup(lik_init[lik_init$weight > 0,],
+                                         grouping = grouping)
+      
+      ## Write groupings 
+      write.g3.file(attr(params_in_s1, 'grouping'), out_path, 'lik.groupings')
+      
+      ## Initial parameters (weights included in parameter template)
+      for (i in names(params_in_s1)){
+        write.g3.param(params_in_s1[[i]], 
+                       out_path, 
+                       paste0('params.in.stage1.', i),
+                       add_parscale = use_parscale)
+      }
+      
+      save(params_in_s1, file = file.path(out_path, 'params_in_s1.Rdata'))
       
       ## -------------- Run first stage of iterative re-weighting  -----------------
       
@@ -147,71 +148,79 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                        paste0('params.out.stage1.', i),
                        add_parscale = use_parscale)
       }
+    }
+    else{ 
       
-      ## ------------ Update weights for second round of re-weighting --------------
+      echo_message('##  RESUMING ITERATIVE REWEIGHTING AT STAGE 2\n')
       
-      ## Update weights for second round of re-weighting
-      lik_s1 <- parallel::mclapply(params_out_s1, 
-                                   function(x){ g3_lik_out(model, x) }, 
-                                   mc.cores = parallel::detectCores())
-      
-      ## Calculate and write SS
-      ss_s1 <- tabulate_SS(lik_s1, attr(params_in_s1, 'grouping'))
-      write.g3.file(ss_s1$SS, out_path, 'lik.comp.score.stage1')
-      write.g3.file(ss_s1$SS_norm, out_path, 'lik.comp.score.norm.stage1')
-      
-      ## Update the parameters
-      params_in_s2 <- g3_update_weights(lik_s1, 
-                                        attr(params_in_s1, 'grouping'),
-                                        cv_floor)
-      
-      ## Identify any failed components
-      failed_components <- find_failed(lik_s1)
-      
-      ## Update params and weights for failed components
-      if (length(failed_components > 0)){
-        
-        ## Find the weights for the failed component
-        bad_pars <- 
-          attr(params_in_s1, 'grouping') %>%
-          dplyr::select(-.data$comp) %>% 
-          dplyr::rename(comp = .data$param_name) %>% 
-          dplyr::left_join(approx_weights, by = 'comp') %>% 
-          dplyr::filter(.data$group %in% failed_components) %>% 
-          dplyr::select(.data$comp, .data$weight)   
-        
-        ## Merge the approximated weight into each component
-        params_in_s2 <- 
-          lapply(params_in_s2, function(x){
-            x$value[bad_pars$comp] <- bad_pars$weight
-            return(x)
-          })
-        
-        ## Now adjust the parameters
-        for (i in seq_along(failed_components)){
-          warning(paste0('## STAGE 1: optimisation for component ', i, ' failed, therefore corresponding weights are approximated using the shortcut method and optimised parameter values are taken from the initial values'))
-          ## Identify the NA params
-          na_params <- params_in_s2[[i]][is.na(params_in_s2[[i]]$value), 'switch']
-          ## Merge values from previous param set
-          params_in_s2[[i]]$value[na_params] <- params_in_s1[[i]]$value[na_params]
-        }
+      ## Resuming from saved stage 1 parameters
+      if (file.exists(file.path(out_path, 'params_out_s1.Rdata'))){
+        load(file = file.path(out_path, 'params_out_s1.Rdata'))
+        load(file = file.path(out_path, 'params_in_s1.Rdata'))
       }
-      
-      for (i in names(params_in_s2)){
-        write.g3.param(params_in_s2[[i]],
-                       out_path,
-                       paste0('params.in.stage2.', i),
-                       add_parscale = use_parscale)
-      }  
+      else stop(paste("'resume_final' was TRUE, however, the directory",
+                      out_path, "does not contain a 'params_out_s1.Rdata' file"))
       
     }
-    else{
       
-      echo_message('##  FIRST ROUND OF OPTIMISATION SKIPPED \n')
-      params_in_s2 <- params_in_s1
+    ## ------------ Update weights for second round of re-weighting --------------
+    
+    ## Update weights for second round of re-weighting
+    lik_s1 <- parallel::mclapply(params_out_s1, 
+                                 function(x){ g3_lik_out(model, x) }, 
+                                 mc.cores = parallel::detectCores())
+    
+    ## Calculate and write SS
+    ss_s1 <- tabulate_SS(lik_s1, attr(params_in_s1, 'grouping'))
+    write.g3.file(ss_s1$SS, out_path, 'lik.comp.score.stage1')
+    write.g3.file(ss_s1$SS_norm, out_path, 'lik.comp.score.norm.stage1')
+    
+    ## Update the parameters
+    params_in_s2 <- g3_update_weights(lik_s1, 
+                                      attr(params_in_s1, 'grouping'),
+                                      cv_floor)
+    
+    ## Identify any failed components
+    failed_components <- find_failed(lik_s1)
+    
+    ## Update params and weights for failed components
+    if (length(failed_components > 0)){
       
+      ## Find the weights for the failed component
+      bad_pars <- 
+        attr(params_in_s1, 'grouping') %>%
+        dplyr::select(-.data$comp) %>% 
+        dplyr::rename(comp = .data$param_name) %>% 
+        dplyr::left_join(approx_weights, by = 'comp') %>% 
+        dplyr::filter(.data$group %in% failed_components) %>% 
+        dplyr::select(.data$comp, .data$weight)   
+      
+      ## Merge the approximated weight into each component
+      params_in_s2 <- 
+        lapply(params_in_s2, function(x){
+          x$value[bad_pars$comp] <- bad_pars$weight
+          return(x)
+        })
+      
+      ## Now adjust the parameters
+      for (i in seq_along(failed_components)){
+        warning(paste0('## STAGE 1: optimisation for component ', i, ' failed, therefore corresponding weights are approximated using the shortcut method and optimised parameter values are taken from the initial values'))
+        ## Identify the NA params
+        na_params <- params_in_s2[[i]][is.na(params_in_s2[[i]]$value), 'switch']
+        ## Merge values from previous param set
+        params_in_s2[[i]]$value[na_params] <- params_in_s1[[i]]$value[na_params]
+      }
     }
     
+    for (i in names(params_in_s2)){
+      write.g3.param(params_in_s2[[i]],
+                     out_path,
+                     paste0('params.in.stage2.', i),
+                     add_parscale = use_parscale)
+    }  
+    
+    save(params_in_s2, file = file.path(out_path, 'params_in_s2.Rdata'))
+      
     ## ----------- Second round of re-weighting ----------------------------------
     
     echo_message('\n##  STAGE 2 OPTIMISATION\n')
