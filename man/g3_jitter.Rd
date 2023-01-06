@@ -2,20 +2,51 @@
 % Please edit documentation in R/g3_jitter.R
 \name{g3_jitter}
 \alias{g3_jitter}
-\title{Jitters a parameters values}
+\title{Runs a jitter analysis}
 \usage{
-g3_jitter(params, jitter_fraction = 0.1, patterns_to_ignore = "_weight")
+g3_jitter(
+  gd,
+  outdir = "JITTER",
+  model,
+  params,
+  njits = 10,
+  jitter_fraction = 0.1,
+  pattern_to_ignore = NULL,
+  within_bounds = TRUE,
+  use_parscale = TRUE,
+  method = "BFGS",
+  control = list(),
+  ncores = parallel::detectCores()
+)
 }
 \arguments{
-\item{params}{A g3 tmb parameter template}
+\item{gd}{Directory to store output}
+
+\item{outdir}{Directory name within gd to store run outputs}
+
+\item{model}{A G3 model, produced by g3_to_tmb() or g3_to_r()}
+
+\item{params}{Initial parameters to use with the model, this should be a TMB parameter template i.e. attr(tmb_model, 'parameter_template')}
+
+\item{njits}{Number of jitters to run, defaults to 10}
 
 \item{jitter_fraction}{The fraction of jittering for a value}
 
-\item{patterns_to_ignore}{Regular expression of parameters to avoid jittering}
+\item{pattern_to_ignore}{Regular expression of parameters to avoid jittering}
+
+\item{within_bounds}{Logical, if TRUE, jittered values that fall outside parameter bounds (params$lower, params$upper) will be adjusted to fall within the bounds}
+
+\item{use_parscale}{Logical indicating whether optim(control$parscale) should be used}
+
+\item{method}{The optimisation method, see \code{\link[stats]{optim}}}
+
+\item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
+
+\item{ncores}{The number of cores to use, defaults to the number available}
 }
 \value{
 Jittered set of parameters
 }
 \description{
-Jitters a parameters values
+Runs a jitter analysis
 }
