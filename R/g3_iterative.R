@@ -48,6 +48,20 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     else return(NULL)
     
   }
+  
+  ## Merges the 'summary' attributes from a list of optimised parameters
+  collect_summary <- function(param_list){
+    
+    tmp <- lapply(names(param_list), function(x){
+      return(
+        cbind(data.frame(group = x),
+              attr(param_list[[x]], 'summary'),
+              stringsAsFactors = FALSE)
+      )
+    })
+    return(do.call('rbind', tmp))
+    
+  }
 
   ## ---------------------------------------------------------------------------
   ## APPROXIMATING WEIGHTS AND RUNNING THE OPTIMISATION
@@ -134,13 +148,16 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                                           },
                                           mc.cores = parallel::detectCores())
       
+      ## Check whether NULLs were passed out
+      params_out_s1 <- check_null_params(params_out_s1, params_in_s1)
+      
+      ## Save
       save(params_out_s1, file = file.path(out_path, 'params_out_s1.Rdata'))
       
       ## Summary of optimisation settings and run details
-      lapply(params_out_s1, function(x) attr(x, 'summary')) %>% 
-        dplyr::bind_rows(.id = 'group') %>% 
-        write.g3.file(out_path, 'optim.summary.stage1')
+      collect_summary(params_out_s1) |> write.g3.file(out_path, 'optim.summary.stage1')
       
+      ## Optimised parameters
       for (i in names(params_out_s1)){
         attr(params_out_s1[[i]], 'summary') <- NULL
         write.g3.param(params_out_s1[[i]],
@@ -201,9 +218,9 @@ g3_iterative <- function(gd, wgts = 'WGTS',
           x$value[bad_pars$comp] <- bad_pars$weight
           return(x)
         })
-      
+   
       ## Now adjust the parameters
-      for (i in seq_along(failed_components)){
+      for (i in failed_components){
         warning(paste0('## STAGE 1: optimisation for component ', i, ' failed, therefore corresponding weights are approximated using the shortcut method and optimised parameter values are taken from the initial values'))
         ## Identify the NA params
         na_params <- params_in_s2[[i]][is.na(params_in_s2[[i]]$value), 'switch']
@@ -237,12 +254,14 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                                           },
                                         mc.cores = parallel::detectCores())
     
+    ## Check whether NULLs were passed out
+    params_out_s2 <- check_null_params(params_out_s2, params_in_s2)
+    
+    ## Save
     save(params_out_s2, file = file.path(out_path, 'params_out_s2.Rdata'))
     
     ## Summary of optimisation settings and run details
-    lapply(params_out_s2, function(x) attr(x, 'summary')) %>% 
-      dplyr::bind_rows(.id = 'group') %>% 
-      write.g3.file(out_path, 'optim.summary.stage2')
+    collect_summary(params_out_s2) |> write.g3.file(out_path, 'optim.summary.stage2')
     
     for (i in names(params_out_s2)){
       attr(params_out_s2[[i]], 'summary') <- NULL
