@@ -143,7 +143,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
       dplyr::mutate(id = gsub('^cdist_|^adist_|_model__params$', '', .data$id))
     
     sidat <- 
-      tmp[grep('(^adist|^cdist)_surveyindices_.+__num$|^dist_surveyindices_.+__wgt$',names(tmp))] %>%
+      tmp[grep('(^adist|^cdist)_surveyindices_.+__num$|(^adist|^cdist)_surveyindices_.+__wgt$',names(tmp))] %>%
       purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
       dplyr::bind_rows(.id = 'comp') %>%
       dplyr::mutate(index = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2', .data$comp),
