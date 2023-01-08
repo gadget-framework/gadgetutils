@@ -153,7 +153,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
                     origin = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\5', .data$comp),
                     name = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2.\\4', .data$comp),
                     #length = gsub('len', '', .data$length) %>% as.numeric(),
-                    area = as.numeric(as.factor(.data$area))) %>%
+                    area = tryCatch(as.numeric(as.factor(.data$area)),
+                                    error = function(z) 1)) %>%
       split_length() %>% 
       extract_year_step() %>%
       dplyr::select(-.data$comp) %>%
