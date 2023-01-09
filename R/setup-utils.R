@@ -184,6 +184,7 @@ init_sd <- function(stock, id, parametric = FALSE){
 #' @param mlgg maxlengthgroupgrowth for growth of both mature/immature
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
+#' @param rec_id Part of stock name to use for recruitment parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
 #' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat_alpha','mat_l50','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
@@ -197,6 +198,7 @@ model_actions <- function(imm,
                           mlgg = 15,
                           mature = TRUE, 
                           comp_id = 'species', 
+                          rec_id = list(imm, mat),
                           init_mode = 1, 
                           parametric_sd = FALSE,
                           exp_params = c(),
@@ -320,7 +322,7 @@ model_actions <- function(imm,
       ## RENEWAL
       gadget3::g3a_renewal_normalparam(imm,
                               factor_f = stock_renewal(imm, 
-                                                       id = list(imm, mat),
+                                                       id = rec_id,
                                                        exponentiate_rec = 'rec' %in% exp_params, 
                                                        exponentiate_rec_scalar = 'rec.scalar' %in% exp_params),
                               mean_f = initvonb,
