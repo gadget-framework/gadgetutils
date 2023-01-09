@@ -7,6 +7,7 @@
 stock_renewal(
   stock,
   id = "species",
+  scalar_id = "species",
   exponentiate_rec = FALSE,
   exponentiate_rec_scalar = FALSE
 )
@@ -15,6 +16,8 @@ stock_renewal(
 \item{stock}{A g3 stock object}
 
 \item{id}{Part of the stock name to use in parameter name}
+
+\item{scalar_id}{Part of the stock name to use in parameter name}
 
 \item{exponentiate_rec}{Should the annual renewal parameters be exponentiated?}
 

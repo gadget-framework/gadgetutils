@@ -123,12 +123,14 @@ init_abund <- function(imm,
 #'
 #' @param stock A g3 stock object
 #' @param id Part of the stock name to use in parameter name
+#' @param scalar_id Part of the stock name to use in parameter name
 #' @param exponentiate_rec Should the annual renewal parameters be exponentiated?
 #' @param exponentiate_rec_scalar Should the renewal scalar be exponentiated?
 #' @return "scalar * renew" formula, parameterised for given stock
 #' @export
 stock_renewal <- function(stock, 
-                          id = 'species', 
+                          id = 'species',
+                          scalar_id = 'species',
                           exponentiate_rec = FALSE,
                           exponentiate_rec_scalar = FALSE){
   
@@ -138,7 +140,7 @@ stock_renewal <- function(stock,
                    exponentiate = exponentiate_rec,
                    scale = 
                      gadget3::g3_parameterized(name = 'rec.scalar',
-                                      by_stock = id,
+                                      by_stock = scalar_id,
                                       exponentiate = exponentiate_rec_scalar),
                    ifmissing = NaN)
   
@@ -185,6 +187,7 @@ init_sd <- function(stock, id, parametric = FALSE){
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param rec_id Part of stock name to use for recruitment parameters, e.g. 'species' will share parameters with both mature/immature
+#' @param rec_scalar_id Part of stock name to use for recruitment scalar parameter, e.g. 'species' will share parameters with both mature/immature
 #' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
 #' @param parametric_sd Is the initial conditions stddev parameterised, or a table by age?
 #' @param exp_params Which parameters should be exponentiated? exp_params is a vector of parameter names, possible parameters include: c('linf','k','bbin','recl','rec.sd','mat_alpha','mat_l50','init','init.scalar','rec','rec.scalar','init.f','m','walpha','wbeta'). Note that is a scalar is exponentiated the annual values will be too, and vice versa.
@@ -199,6 +202,7 @@ model_actions <- function(imm,
                           mature = TRUE, 
                           comp_id = 'species', 
                           rec_id = list(imm, mat),
+                          rec_scalar_id = list(imm, mat),
                           init_mode = 1, 
                           parametric_sd = FALSE,
                           exp_params = c(),
@@ -272,8 +276,8 @@ model_actions <- function(imm,
   walpha <- setup_g3_param('walpha', comp_id, tv_params, by_age_params, exp_params)
   wbeta <- setup_g3_param('wbeta', comp_id, tv_params, by_age_params, exp_params)
   bbin <- setup_g3_param('bbin', comp_id, tv_params, by_age_params, exp_params, scale = 10)
-  recl <- setup_g3_param('recl', comp_id, tv_params, by_age_params, exp_params)
-  recsd <- setup_g3_param('rec.sd', comp_id, tv_params, by_age_params, exp_params)
+  recl <- setup_g3_param('recl', rec_id, tv_params, by_age_params, exp_params)
+  recsd <- setup_g3_param('rec.sd', rec_id, tv_params, by_age_params, exp_params)
   mat_alpha <- setup_g3_param('mat_alpha', comp_id, tv_params, by_age_params, exp_params, scale = 0.001)
   mat_l50 <- setup_g3_param('mat_l50', comp_id, tv_params, by_age_params, exp_params)
   natm <- setup_g3_param('M', by_stock = TRUE, tv_params, by_age_params, exp_params)
@@ -323,6 +327,7 @@ model_actions <- function(imm,
       gadget3::g3a_renewal_normalparam(imm,
                               factor_f = stock_renewal(imm, 
                                                        id = rec_id,
+                                                       scalar_id = rec_scalar_id,
                                                        exponentiate_rec = 'rec' %in% exp_params, 
                                                        exponentiate_rec_scalar = 'rec.scalar' %in% exp_params),
                               mean_f = initvonb,

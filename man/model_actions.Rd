@@ -11,6 +11,7 @@ model_actions(
   mature = TRUE,
   comp_id = "species",
   rec_id = list(imm, mat),
+  rec_scalar_id = list(imm, mat),
   init_mode = 1,
   parametric_sd = FALSE,
   exp_params = c(),
@@ -31,6 +32,8 @@ model_actions(
 \item{comp_id}{Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature}
 
 \item{rec_id}{Part of stock name to use for recruitment parameters, e.g. 'species' will share parameters with both mature/immature}
+
+\item{rec_scalar_id}{Part of stock name to use for recruitment scalar parameter, e.g. 'species' will share parameters with both mature/immature}
 
 \item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
 
