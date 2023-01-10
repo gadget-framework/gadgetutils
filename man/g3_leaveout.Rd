@@ -7,7 +7,7 @@ each one of which has a component (or set of components) turned off (weight = 0)
 \usage{
 g3_leaveout(
   gd,
-  l1o = "L1O",
+  l1o = "LOCV",
   model,
   params,
   grouping = list(),
