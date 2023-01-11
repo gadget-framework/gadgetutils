@@ -18,6 +18,7 @@ save_obj <- function(..., file) {
 ## data.frames. Sometimes NULL will be returned from mclapply if a process 
 ## does not complete. In these cases it would be useful to issue a warning and substitute
 ## in the input parameters to continue the optimisation
+#' @export
 check_null_params <- function(params_out, param_in){
   
   ## Get index of NULL elements
