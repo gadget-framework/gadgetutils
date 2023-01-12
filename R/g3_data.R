@@ -7,6 +7,7 @@
 #' @param floating_point_correction Logical indicating whether 1e-6 should be added to all numeric columns except for \code{year} and \code{step}. Corrects for floating point issues associated with certain numbers such as 28 and 57.
 #' @param verbose Logical indicating whether the function should return messages about potential assumptions when expected data are not specified.
 #' @details This function attempts to do the same than \code{mfdb_sample_*} functions: summarise data ready for gadget3, with the difference that this function uses dataframes instead of a SQL database as input data. Consequently, this function should be independent of mfdb if the functions that generate groups and intervals as the mfdb package (\code{mfdb_interval}, \code{mfdb_group}) were imported to a project with this function.
+#' @export
 # @examples
 # data_count(
 #   x = y %>%
