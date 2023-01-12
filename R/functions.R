@@ -18,8 +18,9 @@ save_obj <- function(..., file) {
 ## data.frames. Sometimes NULL will be returned from mclapply if a process 
 ## does not complete. In these cases it would be useful to issue a warning and substitute
 ## in the input parameters to continue the optimisation
+
 #' @export
-check_null_params <- function(params_out, param_in){
+check_null_params <- function(params_out, params_in){
   
   ## Get index of NULL elements
   params_null <- sapply(params_out, FUN = is.null)
@@ -28,9 +29,15 @@ check_null_params <- function(params_out, param_in){
   ## Loop over list elements to see if NULL was returned
   for (i in seq_along(params_out)){
     
+    
     if (!is.null(params_out[[i]])){
-      attr(params_out[[i]], 'summary') <- cbind(attr(params_out[[i]], 'summary'),
-                                                data.frame(return_complete = 1))
+      
+      ## Update the summary attribute if it exists
+      if ('summary' %in% attributes(params_out[[i]])){
+        attr(params_out[[i]], 'summary') <- cbind(attr(params_out[[i]], 'summary'),
+                                                  data.frame(return_complete = 1))
+      }
+      
     }
     else{
       
