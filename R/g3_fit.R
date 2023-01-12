@@ -6,7 +6,7 @@
 #' @param steps Which steps to include in the annual output? Vector of int.
 #' @return List of tibbles
 #' @export
-g3_fit <- function(model, params, rec.steps = 1, steps = 1){
+g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
   
   stopifnot(is.list(params))
   
@@ -210,8 +210,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
       dplyr::bind_rows(.id='lik_comp') %>% 
       dplyr::filter(!grepl('understocking', .data$lik_comp)) %>%
       dplyr::mutate(type = gsub('.+(wgt|num|weight)','\\1', .data$lik_comp),
-                    component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(num|weight)', '\\3', .data$lik_comp),
-                    data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(num|weight)', '\\1_\\2', .data$lik_comp)) %>%
+                    component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\3', .data$lik_comp),
+                    data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>%
       dplyr::select(-.data$lik_comp) %>%
       tidyr::pivot_wider(names_from = .data$type, values_from = .data$lik_score) %>%
       extract_year_step()  
