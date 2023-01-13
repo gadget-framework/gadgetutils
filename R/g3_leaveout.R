@@ -2,7 +2,7 @@
 #' each one of which has a component (or set of components) turned off (weight = 0).
 #'
 #' @param gd Directory to store output
-#' @param wgts Directory name within gd to store run outputs
+#' @param outdir Directory name within gd to store run outputs
 #' @param model A G3 model, produced by g3_to_tmb() or g3_to_r()
 #' @param params Initial parameters to use with the model, this should be a TMB parameter template i.e. attr(tmb_model, 'parameter_template')
 #' @param grouping List of component names to group together. This allows you to leave out multiple components at a time, e.g. length and age-length distributions from a particular fleet
@@ -12,7 +12,7 @@
 #' @param ncores The number of cores to use, defaults to the number available
 #' @return A data.frame with the nll for each optimisation
 #' @export
-g3_leaveout <- function(gd, l1o = 'LOCV', 
+g3_leaveout <- function(gd, outdir = 'LOCV', 
                         model, params,
                         grouping = list(),
                         use_parscale = TRUE,
@@ -32,7 +32,7 @@ g3_leaveout <- function(gd, l1o = 'LOCV',
   }
   
   ## Create output directory if it does not exist
-  out_path <- file.path(gd, l1o)
+  out_path <- file.path(gd, outdir)
   if (!exists(out_path)) dir.create(out_path, recursive = TRUE, showWarnings = FALSE)
   
   ## ---------------------------------------------------------------------------

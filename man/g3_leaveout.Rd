@@ -7,7 +7,7 @@ each one of which has a component (or set of components) turned off (weight = 0)
 \usage{
 g3_leaveout(
   gd,
-  l1o = "LOCV",
+  outdir = "LOCV",
   model,
   params,
   grouping = list(),
@@ -19,6 +19,8 @@ g3_leaveout(
 }
 \arguments{
 \item{gd}{Directory to store output}
+
+\item{outdir}{Directory name within gd to store run outputs}
 
 \item{model}{A G3 model, produced by g3_to_tmb() or g3_to_r()}
 
@@ -33,8 +35,6 @@ g3_leaveout(
 \item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
 
 \item{ncores}{The number of cores to use, defaults to the number available}
-
-\item{wgts}{Directory name within gd to store run outputs}
 }
 \value{
 A data.frame with the nll for each optimisation
