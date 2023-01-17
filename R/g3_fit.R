@@ -436,6 +436,10 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
 #' @export
 extract_year_step <- function(data){
   
+  if (any(!grepl('-', data$time))){
+    data[!grepl('-', data$time), 'time'][[1]] <- paste0(data[!grepl('-', data$time), 'time'][[1]], '-0')
+  }
+  
   data %>% 
     tidyr::extract(col = 'time', 
                    into = c('year', 'step'), 
