@@ -37,7 +37,7 @@ g3_iterative(
 
 \item{shortcut}{If TRUE, weights for each component will be approximated and a final optimisation performed}
 
-\item{cv_floor}{Minimum value of survey (adist_surveyindices) CV, applied prior to second stage of iterations}
+\item{cv_floor}{Minimum value of survey components (adist_surveyindices) as 1/\code{cv_floor}, applied prior to second stage of iterations.}
 
 \item{resume_final}{Logical value. If TRUE the re-weighting procedure starts at the second stage.}
 }
@@ -46,4 +46,7 @@ Final set of parameters
 }
 \description{
 Perform multiple optimisation runs of a model, reweighting with each run
+}
+\details{
+Weights are calculated using inverse-variance weighting (\eqn{1/\sigma^2}), and as \code{1/pmax(variance, cv_floor)}, hence the minimum value for survey components is 1/\code{cv_floor}. Use smaller \code{cv_floor} values to increase the weight of survey components.
 }

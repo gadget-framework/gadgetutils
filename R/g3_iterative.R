@@ -9,9 +9,10 @@
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @param shortcut If TRUE, weights for each component will be approximated and a final optimisation performed
-#' @param cv_floor Minimum value of survey (adist_surveyindices) CV, applied prior to second stage of iterations
+#' @param cv_floor Minimum value of survey components (adist_surveyindices) as 1/\code{cv_floor}, applied prior to second stage of iterations. 
 #' @param resume_final Logical value. If TRUE the re-weighting procedure starts at the second stage.
 #' @return Final set of parameters
+#' @details Weights are calculated using inverse-variance weighting (\eqn{1/\sigma^2}), and as \code{1/pmax(variance, cv_floor)}, hence the minimum value for survey components is 1/\code{cv_floor}. Use smaller \code{cv_floor} values to increase the weight of survey components. 
 #' @importFrom rlang .data
 #' @importFrom stats optim
 #' @export
