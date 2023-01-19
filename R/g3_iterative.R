@@ -1,5 +1,59 @@
 #' Perform multiple optimisation runs of a model, reweighting with each run
+#' 
+#' An implementation of the iterative reweigthing of likelihood
+#' components in gadget. It analyzes a given gadget model and, after
+#' a series of optimisations where each likelihood component is
+#' heavily weigthed, suggests a weigthing for the components based on
+#' the respective variance.  If one (or more) components, other than
+#' understocking and penalty, are 0 then the gadget optimisation with
+#' the final weights will not be completed.
 #'
+#' In Taylor et. al an objective reweighting scheme for likelihood
+#' components is described for cod in Icelandic waters. The authors
+#' nota that the issue of component weighting has been discussed for
+#' some time, as the data sources have different natural scales (e.g
+#' g vs. kg) that should not affect the outcome. A simple heuristic,
+#' where the weights are the inverse of the initial sums of squares
+#' for the respective component resulting in an initials score equal
+#' to the number of components, is therfor often used. This has the
+#' intutitive advantage of all components being normalised. There is
+#' however a drawback to this since the component scores, given the
+#' initial parametrisation, are most likely not equally far from
+#' their respective optima resulting in sub-optimal weighting.  The
+#' iterative reweighting heuristic tackles this problem by optimising
+#' each component separately in order to determine the lowest
+#' possible value for each component. This is then used to determine
+#' the final weights.  The resoning for this approach is as follows:
+#' Conceptually the likelihood components can be thought of as
+#' residual sums of squares, and as such their variance can be
+#' esimated by dividing the SS by the degrees of freedom. The optimal
+#' weighting strategy is the inverse of the variance.  Here the
+#' iteration starts with assigning the inverse SS as the initial
+#' weight, that is the initial score of each component when
+#' multiplied with the weight is 1. Then an optimisation run for each
+#' component with the intial score for that component set to
+#' 10000. After the optimisation run the inverse of the resulting SS
+#' is multiplied by the effective number of datapoints and used as
+#' the final weight for that particular component.  The effective
+#' number of datapoints is used as a proxy for the degrees of freedom
+#' is determined from the number of non-zero datapoints. This is
+#' viewed as satisfactory proxy when the dataset is large, but for
+#' smaller datasets this could be a gross overestimate. In
+#' particular, if the surveyindices are weigthed on their own while
+#' the yearly recruitment is esimated they could be overfitted. If
+#' there are two surveys within the year Taylor et. al suggest that
+#' the corresponding indices from each survey are weigthed
+#' simultaneously in order to make sure that there are at least two
+#' measurement for each yearly recruit, this is done through
+#' component grouping which is implemented. 
+#' 
+#' Component grouping is oftern applied in cases where overfitting is likely, 
+#' and this can also happen with catch composition data as well as survey indices. 
+#' 
+#' In addition to grouping, a maximum weight can be assigned survey indices vie the
+#' cv_floor setting. The cv_floor parameter sets the minimum of the estimated component 
+#' variance and thus the maximum of the inverser variance. 
+#' 
 #' @param gd Directory to store output
 #' @param wgts Directory name within gd to store run outputs
 #' @param model A G3 model, produced by g3_to_r() or g3_tmb_adfun()
