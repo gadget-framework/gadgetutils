@@ -400,14 +400,14 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
     dplyr::left_join(harv.suit,
                      by = c('stock', 'year', 'step', 'length')) %>%
     dplyr::group_by(.data$stock, .data$year, .data$area, .data$step) %>%
-    dplyr::summarise(total.number = sum(.data$number, na.rm = TRUE),
-                     total.biomass = sum(.data$number * .data$mean_weight, na.rm = TRUE),
+    dplyr::summarise(total.number = sum(.data$number),
+                     total.biomass = sum(.data$number * .data$mean_weight),
                      harv.biomass = sum(.data$number * .data$suit * .data$mean_weight, na.rm = TRUE)) %>%
     dplyr::left_join(f.by.year,
                      by = c('stock', 'year', 'area')) %>% 
     dplyr::left_join(stock.recruitment %>% 
                        dplyr::group_by(.data$stock, .data$year, .data$area) %>% 
-                       dplyr::summarise(recruitment = sum(.data$recruitment, na.rm = TRUE)),
+                       dplyr::summarise(recruitment = sum(.data$recruitment)),
                      by = c('stock', 'year', 'area')) %>% 
     dplyr::ungroup()
   
