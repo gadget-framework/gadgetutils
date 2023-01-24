@@ -157,6 +157,7 @@ init_sd <- function(stock, id, parametric = FALSE){
   
   ## Helper from gadget3
   g3a_initial_sigma <- function(alpha, beta, gamma, mean_l){
+    
     gadget3:::f_substitute(
       ~mean_l * ( alpha + beta/age + gamma * age),
       list(alpha = alpha,
@@ -171,7 +172,7 @@ init_sd <- function(stock, id, parametric = FALSE){
       gadget3::g3_parameterized('initial_sigma_alpha', by_stock = id),
       gadget3::g3_parameterized('initial_sigma_beta', by_stock = id),
       gadget3::g3_parameterized('initial_sigma_gamma', by_stock = id),
-      gadget3::g3a_renewal_vonb(by_stock = id),
+      gadget3::g3a_renewal_vonb(by_stock = id)
     )
   }
   else{
