@@ -151,9 +151,10 @@ stock_renewal <- function(stock,
 #' @param stock A g3 stock object
 #' @param id Part of the stock name to use in parameter name
 #' @param parametric Is the initial conditions stddev parameterised, or a table by age?
+#' @param mean_len The mean length function (only relevant if parametric = TRUE)
 #' @return A formula suitable for g3a_initialconditions_normalparam()
 #' @export
-init_sd <- function(stock, id, parametric = FALSE){
+init_sd <- function(stock, id, parametric = FALSE, mean_len){
   
   ## Helper from gadget3
   g3a_initial_sigma <- function(alpha, beta, gamma, mean_l){
@@ -172,7 +173,7 @@ init_sd <- function(stock, id, parametric = FALSE){
       gadget3::g3_parameterized('initial_sigma_alpha', by_stock = id),
       gadget3::g3_parameterized('initial_sigma_beta', by_stock = id),
       gadget3::g3_parameterized('initial_sigma_gamma', by_stock = id),
-      gadget3::g3a_renewal_vonb(by_stock = id)
+      mean_len
     )
   }
   else{
@@ -290,7 +291,6 @@ model_actions <- function(imm,
   ## SETUP ACTIONS
   ## ---------------------------------------------------------------------------
   
-  
   stock_actions <- list(
     ## INITIAL CONDITIONS
     gadget3::g3a_initialconditions_normalparam(stock,
@@ -308,7 +308,8 @@ model_actions <- function(imm,
                                       mean_f = initvonb,
                                       stddev_f = init_sd(stock, 
                                                          comp_id, 
-                                                         parametric = parametric_sd),
+                                                         parametric = parametric_sd,
+                                                         mean_len = initvonb),
                                       alpha_f = walpha,
                                       beta_f = wbeta),
     

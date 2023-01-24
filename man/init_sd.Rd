@@ -4,7 +4,7 @@
 \alias{init_sd}
 \title{Generate parameterised initial conditions}
 \usage{
-init_sd(stock, id, parametric = FALSE)
+init_sd(stock, id, parametric = FALSE, mean_len)
 }
 \arguments{
 \item{stock}{A g3 stock object}
@@ -12,6 +12,8 @@ init_sd(stock, id, parametric = FALSE)
 \item{id}{Part of the stock name to use in parameter name}
 
 \item{parametric}{Is the initial conditions stddev parameterised, or a table by age?}
+
+\item{mean_len}{The mean length function (only relevant if parametric = TRUE)}
 }
 \value{
 A formula suitable for g3a_initialconditions_normalparam()
