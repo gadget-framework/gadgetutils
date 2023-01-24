@@ -428,6 +428,12 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
     res.by.year = res.by.year,
     params = out_params
   )
+  
+  ## Add 'summary' attribute if it exists
+  if ('summary' %in% names(attributes(out_params))){
+    attributes(out)$summary <- attr(out_params, 'summary')
+  }
+ 
   class(out) <- c('gadget.fit',class(out))
   return(out)
   
