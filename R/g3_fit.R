@@ -307,7 +307,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$age) %>% 
     dplyr::summarise(number = sum(.data$abundance),
                      mean_length = sum(.data$avg.length*.data$abundance)/sum(.data$abundance),
-                     stddev_length = sum((.data$avg.length-.data$mean_length)^2*.data$abundance)/sum(.data$abundance),
+                     stddev_length = sqrt(sum((.data$avg.length-.data$mean_length)^2*.data$abundance)/sum(.data$abundance)),
                      mean_weight = sum(.data$abundance*.data$weight)/sum(.data$abundance)) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(age = gsub('age', '', .data$age) %>% as.numeric())
