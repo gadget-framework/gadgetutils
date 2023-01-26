@@ -19,24 +19,23 @@ g3_init_guess <- function(params, pattern,
  
   ## Check whether parameter is exponentiated
   is_param_exp <- any(grepl(paste0(pattern, '_exp'), params$switch))
-  if (is_param_exp) pattern <- paste0(pattern, '_exp')
+  if (is_param_exp) pattern <- paste0(pattern, '_exp|', pattern)
  
   ## Are the parameters time- or age-varying
   is_param_varying <- any(grepl(paste0(pattern, '\\.[0-9]'), params$switch))
   
   ## Create new pattern for parameters varying with eg. time
   v_pattern <- ifelse(is_param_varying, 
-                      paste0(pattern, '\\.[0-9]'),
+                      paste0(pattern, '\\.[0-9]|', pattern),
                       pattern)
   
   ## Make sure parameter values are within bounds
-  if (value <= lower && optimise == 1){ 
+  if (value <= lower && optimise == 1) { 
     warning(paste("The 'value' provided for", pattern,
                   "is <= the 'lower' bound and is therefore adjusted to fall within the bounds"))
     value <- max(lower, value) + 0.01*(upper - lower)
-  }
-  else{
-    if (value >= upper && optimise == 1){ 
+  } else{
+    if (value >= upper && optimise == 1) { 
       warning(paste("The 'value' provided for", pattern,
                     "is >= the 'upper' bound and is therefore adjusted to fall within the bounds"))
       value <- min(upper, value) - 0.01*(upper - lower)
