@@ -32,7 +32,7 @@
 # Debugging params
 # x <- y %>% filter(sampling_type == "ENS", gear == "BottomTrawls", year >= 1996, sex == "F", !is.na(age))
 # params = list(); column_names = c("year" = "year", "step" = "month", "area" = "areacell"); floating_point_correction = TRUE; verbose = TRUE
-g3_data <- function(x, params = list(), method = "count", column_names = c("year" = "year", "step" = "month", "area" = "areacell"), floating_point_correction = TRUE, verbose = TRUE) {
+g3_data <- function(x, params = list(), method = "count", column_names = c("year" = "year", "step" = "month", "area" = "areacell"), floating_point_correction = TRUE, verbose = FALSE) {
 
   # To find the number of decimal places to correct for floating point problems while aggregating. From https://stackoverflow.com/a/59022366/1082004
   # decimalplaces <- function(x) {

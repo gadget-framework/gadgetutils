@@ -10,7 +10,7 @@ g3_data(
   method = "count",
   column_names = c(year = "year", step = "month", area = "areacell"),
   floating_point_correction = TRUE,
-  verbose = TRUE
+  verbose = FALSE
 )
 }
 \arguments{
