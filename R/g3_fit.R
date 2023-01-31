@@ -96,7 +96,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
                     length = .data$avg.length) %>%
       dplyr::ungroup() %>% 
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                    dplyr::matches("stock|stock_re"), .data$length, .data$age, 
+                    dplyr::matches("stock|stock_re"), .data$lower, .data$upper, .data$length, .data$age, 
                     .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
     
   }else{
