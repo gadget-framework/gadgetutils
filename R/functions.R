@@ -29,11 +29,10 @@ check_null_params <- function(params_out, params_in){
   ## Loop over list elements to see if NULL was returned
   for (i in seq_along(params_out)){
     
-    
     if (!is.null(params_out[[i]])){
       
       ## Update the summary attribute if it exists
-      if ('summary' %in% attributes(params_out[[i]])){
+      if ('summary' %in% names(attributes(params_out[[i]]))){
         attr(params_out[[i]], 'summary') <- cbind(attr(params_out[[i]], 'summary'),
                                                   data.frame(return_complete = 1))
       }
@@ -43,7 +42,7 @@ check_null_params <- function(params_out, params_in){
       
       ## NULL was returned
       warning(paste("A NULL was returned for component", names(params_out[i])))
-      
+    
       ## First sort out summary attribute
       sumat <- attributes(params_out[[i]])
       if (is.null(sumat)){
