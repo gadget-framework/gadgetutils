@@ -309,7 +309,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                                                    print_status = TRUE,
                                                    print_id = x)
                                           },
-                                        mc.cores =  mc.cores())
+                                        mc.cores =  mc.cores)
     
     ## Check whether NULLs were passed out
     params_out_s2 <- check_null_params(params_out_s2, params_in_s2)
