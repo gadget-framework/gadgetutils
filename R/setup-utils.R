@@ -53,15 +53,15 @@ init_abund <- function(imm,
                                                                      by_stock = comp_id),
                                                M = naturalmortality,
                                                maxage = gadget3::g3_step(~stock_with(mat, mat__maxage))))
-      
-    out <- gadget3::g3a_renewal_initabund(scalar = init_scalar,
-                             init = 1,
-                             M = naturalmortality,
-                             init_F = gadget3::g3_parameterized(name = 'init.F',
-                                                       by_stock = comp_id,
-                                                       by_year = FALSE,
-                                                       by_age = FALSE,
-                                                       exponentiate = exp_init_f))
+    
+    out <- gadget3:::f_substitute(~scalar*init*exp(-1*(M+init_F)*(age-minage)),
+                                  list(scalar = init_scalar,
+                                       init = 1,
+                                       M = naturalmortality,
+                                       init_F = gadget3::g3_parameterized(name = 'init.F',
+                                                                          by_stock = comp_id,
+                                                                          exponentiate = exp_init_f),
+                                       minage = gadget3::g3_step(~stock_with(imm, imm__minage))))
     
     
   }else{
@@ -100,17 +100,20 @@ init_abund <- function(imm,
     else{
       
       ## MODE 2: Initial parameter per age group per stock
-      out <- gadget3::g3a_renewal_initabund(scalar = gadget3::g3_parameterized(name = 'init.scalar',
-                                                         by_stock = TRUE,
-                                                         exponentiate = exp_init_scalar),
-                               init = gadget3::g3_parameterized(name = 'init',
-                                                       by_stock = TRUE,
-                                                       by_age = TRUE,
-                                                       exponentiate = exp_init),
-                               M = naturalmortality,
-                               init_F = gadget3::g3_parameterized(name = 'init.F',
-                                                         by_stock = comp_id,
-                                                         exponentiate = exp_init_f))
+      out <- gadget3:::f_substitute(~scalar*init*exp(-1*(M+init_F)*(age-minage)),
+                                    list(scalar = gadget3::g3_parameterized('init.scalar', 
+                                                                            by_stock = TRUE, 
+                                                                            exponentiate = exp_init_scalar),
+                                         init = gadget3::g3_parameterized(name = 'init', 
+                                                                          by_stock = TRUE, 
+                                                                          by_age = TRUE, 
+                                                                          exponentiate = exp_init),
+                                         M = naturalmortality,
+                                         init_F = gadget3::g3_parameterized(name = 'init.F',
+                                                                            by_stock = comp_id,
+                                                                            exponentiate = exp_init_f),
+                                         minage = gadget3::g3_step(~stock_with(imm, imm__minage)))
+                                    )
       
     }
   }
@@ -221,11 +224,11 @@ model_actions <- function(imm,
                              exp_params, ...){
     
     gadget3::g3_parameterized(name,
-                     by_stock = by_stock,
-                     by_year = tolower(name) %in% tolower(tv_params),
-                     by_age = tolower(name) %in% tolower(by_age_params), ## Add option age_params
-                     exponentiate = tolower(name) %in% tolower(exp_params),
-                     ...)
+                              by_stock = by_stock,
+                              by_year = tolower(name) %in% tolower(tv_params),
+                              by_age = tolower(name) %in% tolower(by_age_params), ## Add option age_params
+                              exponentiate = tolower(name) %in% tolower(exp_params),
+                              ...)
     
   }
   
