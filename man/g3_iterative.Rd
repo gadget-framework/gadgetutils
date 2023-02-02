@@ -15,7 +15,8 @@ g3_iterative(
   control = list(),
   shortcut = FALSE,
   cv_floor = 0,
-  resume_final = FALSE
+  resume_final = FALSE,
+  mc.cores = parallel::detectCores()
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ g3_iterative(
 \item{cv_floor}{Minimum value of survey components (adist_surveyindices) as 1/\code{cv_floor}, applied prior to second stage of iterations.}
 
 \item{resume_final}{Logical value. If TRUE the re-weighting procedure starts at the second stage.}
+
+\item{mc.cores}{number of cores used, defaults to the number of available cores}
 }
 \value{
 Final set of parameters

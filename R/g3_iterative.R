@@ -65,6 +65,7 @@
 #' @param shortcut If TRUE, weights for each component will be approximated and a final optimisation performed
 #' @param cv_floor Minimum value of survey components (adist_surveyindices) as 1/\code{cv_floor}, applied prior to second stage of iterations. 
 #' @param resume_final Logical value. If TRUE the re-weighting procedure starts at the second stage.
+#' @param mc.cores number of cores used, defaults to the number of available cores
 #' @return Final set of parameters
 #' @details Weights are calculated using inverse-variance weighting (\eqn{1/\sigma^2}), and as \code{1/pmax(variance, cv_floor)}, hence the minimum value for survey components is 1/\code{cv_floor}. Use smaller \code{cv_floor} values to increase the weight of survey components. 
 #' @importFrom rlang .data
@@ -78,7 +79,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                          control = list(),
                          shortcut = FALSE,
                          cv_floor = 0,
-                         resume_final = FALSE){
+                         resume_final = FALSE,
+                         mc.cores = parallel::detectCores()){
   
   out_path <- file.path(gd, wgts)
   if (!dir.exists(out_path)) dir.create(out_path, recursive = TRUE)
@@ -201,7 +203,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                                                      print_status = TRUE,
                                                      print_id = x)
                                           },
-                                          mc.cores = parallel::detectCores())
+                                          mc.cores = mc.cores)
       
       ## Check whether NULLs were passed out
       params_out_s1 <- check_null_params(params_out_s1, params_in_s1)
@@ -240,7 +242,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     ## Update weights for second round of re-weighting
     lik_s1 <- parallel::mclapply(params_out_s1, 
                                  function(x){ g3_lik_out(model, x) }, 
-                                 mc.cores = parallel::detectCores())
+                                 mc.cores =  mc.cores)
     
     ## Calculate and write SS
     ss_s1 <- tabulate_SS(lik_s1, attr(params_in_s1, 'grouping'))
@@ -307,7 +309,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                                                    print_status = TRUE,
                                                    print_id = x)
                                           },
-                                        mc.cores = parallel::detectCores())
+                                        mc.cores =  mc.cores)
     
     ## Check whether NULLs were passed out
     params_out_s2 <- check_null_params(params_out_s2, params_in_s2)
@@ -331,7 +333,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     lik_final <- 
       parallel::mclapply(params_out_s2, 
                          function(x){ g3_lik_out(model, x) }, 
-                         mc.cores = parallel::detectCores()) 
+                         mc.cores =  mc.cores) 
     
     ## Calculate and write SS
     ss_s2 <- tabulate_SS(lik_final, attr(params_in_s1, 'grouping'))
