@@ -23,4 +23,5 @@ Imports:
     tibble,
     tidyr,
     tidyselect,
-    modelr
+    modelr,
+    parallel
