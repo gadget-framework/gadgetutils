@@ -6,7 +6,7 @@
 #' @param steps Which steps to include in the annual output? Vector of int.
 #' @return List of tibbles
 #' @export
-g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
+g3_fit <- function(model, params, rec.steps = 1, steps = 1){
   
   stopifnot(is.list(params))
   
@@ -46,6 +46,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
     model_output <- model(params)
     tmp <- attributes(model_output)
   }
+  
+  
   
   ## Calculate the step size as a proportion
   step_size <- 1/length(environment(gadget3:::g3_collate(attr(model, 'actions'))$`000`)$step_lengths)
@@ -426,7 +428,8 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1, adreport_re = '^$'){
     fleet.info = fleet.info,
     stock.recruitment = stock.recruitment,
     res.by.year = res.by.year,
-    params = out_params
+    params = out_params,
+    score = data.frame(nll = tmp$nll)
   )
   
   ## Add 'summary' attribute if it exists

@@ -4,7 +4,7 @@
 \alias{g3_fit}
 \title{Build output summary suitable for feeding into gadgetplots}
 \usage{
-g3_fit(model, params, rec.steps = 1, steps = 1, adreport_re = "^$")
+g3_fit(model, params, rec.steps = 1, steps = 1)
 }
 \arguments{
 \item{model}{A G3 model built using \code{\link[gadget3]{g3_to_r}} or \code{\link[gadget3]{g3_to_tmb}}. The model must include \code{\link[gadget3]{g3a_report_detail}}.}
