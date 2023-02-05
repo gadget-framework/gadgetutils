@@ -85,6 +85,10 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     dplyr::rename(observed = .data$obs, predicted = .data$model) %>% 
     tibble::as_tibble()
   
+  ## Add stock and stock_re columns if they dont exist
+  if (!('stock' %in% names(dat))) dat$stock <- NA
+  if (!('stock_re' %in% names(dat))) dat$stock_re <- NA
+  
   ## Maturity
   ## TO-DO ADD LOWER AND UPPER
   if (any(grepl('mat|sex', dat$name))){
@@ -360,7 +364,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
                                      stock = .data$prey, 
                                      .data$length, 
                                      .data$suit),
-                     by = c('stock', 'year', 'step', 'area', 'length')) %>%
+                     by = c('stock', 'year', 'step', 'area', 'length'), multiple = 'all') %>%
     dplyr::group_by(.data$year, .data$step, .data$area, .data$fleet) %>%
     dplyr::summarise(harv.bio = sum(.data$suit * .data$number * .data$mean_weight)) %>%
     dplyr::left_join(fleet.catches %>% 
