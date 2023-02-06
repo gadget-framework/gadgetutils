@@ -19,24 +19,24 @@
 #   )
 
 add_g3_attributes <- function(x, params) {
-
+  
   ### Correct inconsistency in naming timestep
-
+  
   if("timestep" %in% names(params) & !"step" %in% names(params)) {
     names(params)[names(params) == "timestep"] <- "step"
   }
-
+  
   ## Column/attribute order
-
+  
   param_order <- names(params)
   attrib_order <- c(names(attributes(x)), param_order)
-
+  
   ## Assign x to new object for easier debugging
-
+  
   out <- x
-
+  
   ### Add attributes
-
+  
   if("year" %in% names(params)) {
     attributes(out)$year <-
       stats::setNames(
@@ -51,7 +51,7 @@ add_g3_attributes <- function(x, params) {
         lapply(unique(out$year), function(k) k)
       )
   }
-
+  
   if(any(sapply(params, function(k) inherits(k, "mfdb_group")))) {
     tmp_params <- sapply(params, function(k) inherits(k, "mfdb_group"))
     tmp_params <- names(tmp_params[tmp_params])
@@ -65,7 +65,7 @@ add_g3_attributes <- function(x, params) {
         )
       )
   }
-
+  
   if(any(sapply(params, function(k) inherits(k, "list")))) {
     tmp_params <- sapply(params, function(k) inherits(k, "list"))
     tmp_params <- names(tmp_params[tmp_params])
@@ -79,7 +79,7 @@ add_g3_attributes <- function(x, params) {
         )
       )
   }
-
+  
   if(any(sapply(params, function(k) inherits(k, "mfdb_interval")))) {
     tmp_params <- sapply(params, function(k) inherits(k, "mfdb_interval"))
     tmp_params <- names(tmp_params[tmp_params])
@@ -88,23 +88,23 @@ add_g3_attributes <- function(x, params) {
         stats::setNames(
           lapply(tmp_params, function(k) {
             tmp <- params[[k]]
-
+            
             stats::setNames(lapply(seq_along(tmp)[-length(tmp)], function(i) {
-
+              
               min_val <- unname(tmp[i])
               max_val <- unname(tmp[i+1])
               outout <- call("seq", min_val, max_val -1)
-
+              
               attr(outout, "min") <- min_val
               attr(outout, "max") <- max_val
-
+              
               if("lower" %in% attributes(tmp)$open_ended & i == 1) {
                 attr(outout, "min_open_ended") <- TRUE
               }
               if("upper" %in% attributes(tmp)$open_ended & i == length(tmp) -1) {
                 attr(outout, "max_open_ended") <- TRUE
               }
-
+              
               outout
             }),
             names(tmp)[-length(tmp)]
@@ -114,32 +114,42 @@ add_g3_attributes <- function(x, params) {
         )
       )
   }
-
+  
   attributes(out)$generator <- "add_g3_attributes"
-
+  
   attributes(out) <- attributes(out)[c(attrib_order, setdiff(names(attributes(out)), attrib_order))]
-
+  
   ### Add missing columns
-
+  
   if(length(setdiff(names(params), colnames(out))) > 0) {
-
+    
     outout <- cbind(out,
                     stats::setNames(lapply(setdiff(names(params), colnames(out)), function(k) {
-      rep(names(attributes(out)[names(attributes(out)) == k][[1]]), nrow(out))
-    }), setdiff(names(params), colnames(out)))
+                      rep(names(attributes(out)[names(attributes(out)) == k][[1]]), nrow(out))
+                    }), setdiff(names(params), colnames(out)))
     )
-
+    
     outout <- outout[c(intersect(names(outout), names(attributes(out))),
-      setdiff(names(outout), names(attributes(out))))]
-
+                       setdiff(names(outout), names(attributes(out))))]
+    
     attributes(outout) <- c(attributes(outout),
-      attributes(out)[setdiff(names(attributes(out)), names(attributes(outout)))])
-
+                            attributes(out)[setdiff(names(attributes(out)), names(attributes(outout)))])
+    
     out <- outout
   }
-
-
-
+  
+  ## Test whether attribute names match those of data
+  
+  test_attributes <- names(attributes(out)[names(attributes(out)) %in% names(out)])
+  
+  lapply(test_attributes, function(k) {
+    if(!all(unique(out[[k]]) %in% names(attributes(out)[names(attributes(out)) == k][[1]]))) {
+      warning(paste("Unique column and attribute values for", k, "do not match."))
+    }
+  })
+  
+  ## Return
+  
   return(out)
-
+  
 }

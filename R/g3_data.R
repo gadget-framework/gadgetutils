@@ -273,5 +273,17 @@ g3_data <- function(x, params = list(), method = "count", column_names = c("year
     ))
   }
   
+  ## Test whether attribute names match those of data
+  
+  test_attributes <- names(attributes(out)[names(attributes(out)) %in% names(out)])
+  
+  lapply(test_attributes, function(k) {
+    if(!all(unique(out[[k]]) %in% names(attributes(out)[names(attributes(out)) == k][[1]]))) {
+      warning(paste("Unique column and attribute values for", k, "do not match."))
+    }
+  })
+  
+  ## Return
+  
   out
 }
