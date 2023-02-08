@@ -228,6 +228,18 @@ model_actions <- function(imm,
                               by_year = tolower(name) %in% tolower(tv_params),
                               by_age = tolower(name) %in% tolower(by_age_params), ## Add option age_params
                               exponentiate = tolower(name) %in% tolower(exp_params),
+                              ifmissing = 
+                                if (tolower(name) %in% tolower(tv_params)){
+                                  gadget3::g3_parameterized(paste0(name, '.proj'),
+                                                            by_stock = by_stock,
+                                                            by_age = tolower(name) %in% tolower(by_age_params),
+                                                            exponentiate = tolower(name) %in% tolower(exp_params),
+                                                            value = 0, 
+                                                            optimise = FALSE,
+                                                            ifmissing = 0)
+                                }else{
+                                  NULL
+                                },
                               ...)
     
   }
