@@ -99,8 +99,7 @@ g3_jitter <- function(gd, outdir = 'JITTER',
                                     control = control,
                                     print_status = TRUE,
                                     print_id = x)
-                         },
-                         mc.cores = parallel::detectCores())
+                         })
   }
   
   ## Save output
@@ -108,14 +107,23 @@ g3_jitter <- function(gd, outdir = 'JITTER',
   
   ## Summary of optimisation settings and run details
   summary <- lapply(names(jitpar_out), function(x){
-    return(
-      cbind(data.frame(jitter = x),
-            attr(jitpar_out[[x]], 'summary'), 
-            stringsAsFactors = FALSE)
-    )
+    
+    if(!is.null(jitpar_out[[x]])) {
+      if(!inherits(jitpar_out[[x]], "try-error")) {
+        cbind(data.frame(jitter = x),
+              attr(jitpar_out[[x]], 'summary'), 
+              stringsAsFactors = FALSE)
+      } else {
+        data.frame(jitter = x, method = "Optimisation crashed: memory allocation fail", convergence = FALSE)
+      }
+    } else {
+      data.frame(jitter = x, method = "Optimisation crashed: NULL issue", convergence = FALSE)
+    }
   })
   
-  do.call('rbind', summary) |> write.g3.file(out_path, 'optim.summary.jitter')
+  dplyr::bind_rows(summary) %>% 
+    `rownames<-`(NULL) %>% 
+    write.g3.file(out_path, 'optim.summary.jitter')
   
   return(jitpar_out)
   
