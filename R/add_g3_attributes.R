@@ -144,12 +144,17 @@ add_g3_attributes <- function(x, params) {
   
   lapply(test_attributes, function(k) {
     if(!all(unique(out[[k]]) %in% names(attributes(out)[names(attributes(out)) == k][[1]]))) {
-      warning(paste("Unique column and attribute values for", k, "do not match."))
+      warning(
+        paste(
+          "Unique column and attribute values for", k, "do not match:", 
+          paste(setdiff(unique(out[[k]]), names(attributes(out)[names(attributes(out)) == k][[1]])), collapse = ", ")
+        )
+      )
     }
   })
-  
-  ## Return
-  
-  return(out)
-  
+      
+      ## Return
+      
+      return(out)
+      
 }
