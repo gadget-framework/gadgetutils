@@ -86,9 +86,8 @@ g3_jitter <- function(gd, outdir = 'JITTER',
                                                 print_status = TRUE,
                                                 print_id = x)
                                      },
-                                     mc.cores = parallel::detectCores())
-  }
-  else{
+                                     mc.cores = ncores)
+  } else {
     jitpar_out <- lapply(stats::setNames(names(jitpar_in),
                                          names(jitpar_in)),
                          function(x){
@@ -114,10 +113,16 @@ g3_jitter <- function(gd, outdir = 'JITTER',
               attr(jitpar_out[[x]], 'summary'), 
               stringsAsFactors = FALSE)
       } else {
-        data.frame(jitter = x, method = "Optimisation crashed: memory allocation fail", convergence = FALSE)
+        data.frame(
+          jitter = x, 
+          method = "Optimisation crashed: memory allocation fail", 
+          convergence = FALSE)
       }
     } else {
-      data.frame(jitter = x, method = "Optimisation crashed: NULL issue", convergence = FALSE)
+      data.frame(
+        jitter = x,
+        method = "Optimisation crashed: NULL issue",
+        convergence = FALSE)
     }
   })
   
