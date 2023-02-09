@@ -192,18 +192,37 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       ## -------------- Run first stage of iterative re-weighting  -----------------
       
       echo_message('##  STAGE 1 OPTIMISATION\n')
-      params_out_s1 <- parallel::mclapply(stats::setNames(names(params_in_s1), 
-                                                          names(params_in_s1)),
-                                          function(x){
-                                            g3_optim(model = model,
-                                                     params = params_in_s1[[x]],
-                                                     use_parscale = use_parscale,
-                                                     method = method,
-                                                     control = control,
-                                                     print_status = TRUE,
-                                                     print_id = x)
-                                          },
-                                          mc.cores = mc.cores)
+      if (mc.cores == 1){
+        
+        params_out_s1 <- lapply(stats::setNames(names(params_in_s1), 
+                                                names(params_in_s1)),
+                                function(x){
+                                  g3_optim(model = model,
+                                           params = params_in_s1[[x]],
+                                           use_parscale = use_parscale,
+                                           method = method,
+                                           control = control,
+                                           print_status = TRUE,
+                                           print_id = x)
+                                  })  
+        
+      }else{
+        
+        params_out_s1 <- parallel::mclapply(stats::setNames(names(params_in_s1), 
+                                                            names(params_in_s1)),
+                                            function(x){
+                                              g3_optim(model = model,
+                                                       params = params_in_s1[[x]],
+                                                       use_parscale = use_parscale,
+                                                       method = method,
+                                                       control = control,
+                                                       print_status = TRUE,
+                                                       print_id = x)
+                                            },
+                                            mc.cores = mc.cores)  
+        
+      }
+      
       
       ## Check whether NULLs were passed out
       params_out_s1 <- check_null_params(params_out_s1, params_in_s1)
@@ -212,7 +231,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       save(params_out_s1, file = file.path(out_path, 'params_out_s1.Rdata'))
       
       ## Summary of optimisation settings and run details
-      collect_summary(params_out_s1) |> write.g3.file(out_path, 'optim.summary.stage1')
+      collect_summary(params_out_s1) %>% write.g3.file(out_path, 'optim.summary.stage1')
       
       ## Optimised parameters
       for (i in names(params_out_s1)){
@@ -298,18 +317,37 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     ## ----------- Second round of re-weighting ----------------------------------
     
     echo_message('\n##  STAGE 2 OPTIMISATION\n')
-    params_out_s2 <- parallel::mclapply(stats::setNames(names(params_in_s2), 
-                                                        names(params_in_s2)),
-                                        function(x){
-                                          g3_optim(model = model,
-                                                   params = params_in_s2[[x]],
-                                                   use_parscale = use_parscale,
-                                                   method = method,
-                                                   control = control,
-                                                   print_status = TRUE,
-                                                   print_id = x)
+    
+    if (mc.cores == 1){
+      
+      params_out_s2 <- lapply(stats::setNames(names(params_in_s2), 
+                                              names(params_in_s2)),
+                              function(x){
+                                g3_optim(model = model,
+                                         params = params_in_s2[[x]],
+                                         use_parscale = use_parscale,
+                                         method = method,
+                                         control = control,
+                                         print_status = TRUE,
+                                         print_id = x)
+                                })  
+      
+    }else{
+      
+      params_out_s2 <- parallel::mclapply(stats::setNames(names(params_in_s2), 
+                                                          names(params_in_s2)),
+                                          function(x){
+                                            g3_optim(model = model,
+                                                     params = params_in_s2[[x]],
+                                                     use_parscale = use_parscale,
+                                                     method = method,
+                                                     control = control,
+                                                     print_status = TRUE,
+                                                     print_id = x)
                                           },
-                                        mc.cores =  mc.cores)
+                                          mc.cores =  mc.cores)  
+      
+    }
     
     ## Check whether NULLs were passed out
     params_out_s2 <- check_null_params(params_out_s2, params_in_s2)
@@ -318,7 +356,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     save(params_out_s2, file = file.path(out_path, 'params_out_s2.Rdata'))
     
     ## Summary of optimisation settings and run details
-    collect_summary(params_out_s2) |> write.g3.file(out_path, 'optim.summary.stage2')
+    collect_summary(params_out_s2) %>% write.g3.file(out_path, 'optim.summary.stage2')
     
     for (i in names(params_out_s2)){
       attr(params_out_s2[[i]], 'summary') <- NULL
