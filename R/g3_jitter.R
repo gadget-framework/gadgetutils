@@ -107,23 +107,27 @@ g3_jitter <- function(gd, outdir = 'JITTER',
   ## Summary of optimisation settings and run details
   summary <- lapply(names(jitpar_out), function(x){
     
-    if(!is.null(jitpar_out[[x]])) {
-      if(!inherits(jitpar_out[[x]], "try-error")) {
-        cbind(data.frame(jitter = x),
-              attr(jitpar_out[[x]], 'summary'), 
-              stringsAsFactors = FALSE)
-      } else {
+    if(is.null(jitpar_out[[x]])) {
+      return({ 
+        data.frame(
+          jitter = x,
+          method = "Optimisation crashed: NULL issue",
+          convergence = FALSE)
+      })
+    }
+    
+    if(inherits(jitpar_out[[x]], "try-error")) {
+      return({
         data.frame(
           jitter = x, 
           method = "Optimisation crashed: memory allocation fail", 
           convergence = FALSE)
-      }
-    } else {
-      data.frame(
-        jitter = x,
-        method = "Optimisation crashed: NULL issue",
-        convergence = FALSE)
+      })
     }
+    
+    cbind(data.frame(jitter = x),
+          attr(jitpar_out[[x]], 'summary'), 
+          stringsAsFactors = FALSE)
   })
   
   dplyr::bind_rows(summary) %>% 
