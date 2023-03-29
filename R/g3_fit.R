@@ -4,11 +4,20 @@
 #' @param params The fitted parameters post-optimisation
 #' @param rec.steps Which steps should be considered recruitment steps? Vector of int, or NULL for all steps.
 #' @param steps Which steps to include in the annual output? Vector of int.
+#' @param printatstart Should the stock standard be printed at the start of the timestep (1) or the end (0)
 #' @return List of tibbles
 #' @export
-g3_fit <- function(model, params, rec.steps = 1, steps = 1){
+g3_fit <- function(model, 
+                   params, 
+                   rec.steps = 1, 
+                   steps = 1,
+                   printatstart = 1){
   
+  ## Checks
   stopifnot(is.list(params))
+  if (!(printatstart %in% c(0,1))){
+    stop("The printatstart argument must be '0' or '1' (class numeric)")
+  }
   
   ## Returning parameters as they are put in for now
   ## so model(fit$params) will work without any fiddling
@@ -18,7 +27,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
       if (inherits(params, 'data.frame')){
         params <- params$value
       }
-      if ("report_detail" %in% names(params)) {
+      if ("report_detail" %in% names(params) && printatstart == 1) {
           params$report_detail <- 1L
           model_output <- model(params)
           tmp <- attributes(model_output)
@@ -26,7 +35,7 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
           tmp <- NULL
       }
   } else if (inherits(model, "g3_cpp")) {
-      if (is.data.frame(params) && "report_detail" %in% names(params$switch)) {
+      if (is.data.frame(params) && "report_detail" %in% names(params$switch) && printatstart == 1) {
           params['report_detail', 'value'] <- 1L
           tmp <- gadget3::g3_tmb_adfun(model, params)$report(gadget3::g3_tmb_par(params))
       } else {
@@ -38,9 +47,32 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
 
   # If model is missing actions, then add them and try again
   if (is.null(tmp)) {
-    model <- gadget3::g3_to_r(c(
-      attr(model, 'actions'),
-      list(gadget3::g3a_report_detail(attr(model, 'actions')))))
+    
+    ## Incorporate reporting action
+    re_actions <- c(attr(model, 'actions'),
+                    list(gadget3::g3a_report_detail(attr(model, 'actions'))))
+    
+    ## Mortality and harvest rates are calculated from the stock info. (biomass/numbers)
+    ## at the beginning of the timestep and the numbers/biomass consumed in the timestep
+    ## Therefore if we want to print the stock info. at the end of the timestep
+    ## this needs to be in addition to, rather than instead of, the reporting
+    ## at the begging of the timestep
+    
+    ## Solution is to calculate mortality within gadget3 rather than from the 
+    ## reported output from gadget3
+    
+    if (printatstart == 0){
+      re_actions <- c(re_actions,
+                      list(gadget3::g3a_report_history(attr(model, 'actions'), 
+                                                       var_re = c('__num$', '__wgt$'),
+                                                       out_prefix = 'endprint_',
+                                                       run_at = 11)))
+    }
+    
+    ## Compile model
+    model <- gadget3::g3_to_r(re_actions)
+    
+    ## Run model
     if (is.data.frame(params)) params <- params$value
     params$report_detail <- 1L
     model_output <- model(params)
@@ -398,6 +430,55 @@ g3_fit <- function(model, params, rec.steps = 1, steps = 1){
     dplyr::summarise(catch = sum(.data$biomass_consumed),
                      num.catch = sum(.data$number_consumed),
                      F = mean(.data$mortality[.data$age >= .data$age.min & .data$age <= .data$age.max]))
+  
+  ## Re-calculate stock.std and stock.full if we are printing at the end of the timestep
+  if (printatstart == 0){
+    
+    ## Stock reports
+    weight_reports <- 
+      tmp[grepl('endprint_(.+)__wgt', names(tmp))] %>% 
+      purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'weight') %>% 
+      dplyr::bind_rows(.id='comp') %>% 
+      dplyr::mutate(stock = gsub('endprint_(.+)__wgt', '\\1', .data$comp)) %>% 
+      dplyr::select(-.data$comp) 
+    
+    ## Abundance
+    num_reports <- 
+      tmp[grepl('endprint_(.+)__num', names(tmp))] %>% 
+      purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'abundance') %>% 
+      dplyr::bind_rows(.id='comp') %>% 
+      dplyr::mutate(stock = gsub('endprint_(.+)__num', '\\1', .data$comp)) %>% 
+      dplyr::select(-.data$comp) %>% 
+      dplyr::left_join(weight_reports, by = c("time", "area", "stock", "age", "length")) %>% 
+      split_length() %>%
+      dplyr::group_by(.data$stock) %>% 
+      dplyr::group_modify(~replace_inf(.x)) %>% 
+      dplyr::ungroup() %>%
+      dplyr::mutate(avg.length = (.data$lower + .data$upper)/2) %>% 
+      extract_year_step() %>% 
+      tibble::as_tibble()
+    
+    ## Stock full
+    stock.full <- 
+      num_reports %>%
+      dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$avg.length) %>% 
+      dplyr::summarise(number = sum(.data$abundance), 
+                       mean_weight = mean(.data$weight)) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::rename(length = .data$avg.length)
+    
+    ## Stock std
+    stock.std <- 
+      num_reports %>% 
+      dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$age) %>% 
+      dplyr::summarise(number = sum(.data$abundance),
+                       mean_length = sum(.data$avg.length*.data$abundance)/sum(.data$abundance),
+                       stddev_length = sqrt(sum((.data$avg.length-.data$mean_length)^2*.data$abundance)/sum(.data$abundance)),
+                       mean_weight = sum(.data$abundance*.data$weight)/sum(.data$abundance)) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(age = gsub('age', '', .data$age) %>% as.numeric())
+    
+  }
   
   ## Annual output
   res.by.year <- 
