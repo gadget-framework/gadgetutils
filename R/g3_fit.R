@@ -334,8 +334,7 @@ g3_fit <- function(model,
     num_reports %>%
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$avg.length) %>% 
     dplyr::summarise(number = sum(.data$abundance), 
-                     mean_weight = mean(.data$weight)) %>% 
-    dplyr::ungroup() %>% 
+                     mean_weight = sum(.data$abundance*.data$weight)/sum(.data$abundance), .groups = 'drop') %>% 
     dplyr::rename(length = .data$avg.length)
   
   
