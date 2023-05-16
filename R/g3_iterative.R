@@ -146,8 +146,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
     write.g3.param(params_final,
                    out_path,
-                   'params.final.shortcut',
-                   add_parscale = use_parscale)
+                   'params.final.shortcut')
     
   }else{
     
@@ -183,8 +182,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       for (i in names(params_in_s1)){
         write.g3.param(params_in_s1[[i]], 
                        out_path, 
-                       paste0('params.in.stage1.', i),
-                       add_parscale = use_parscale)
+                       paste0('params.in.stage1.', i)
+                       )
       }
       
       save(params_in_s1, file = file.path(out_path, 'params_in_s1.Rdata'))
@@ -223,7 +222,6 @@ g3_iterative <- function(gd, wgts = 'WGTS',
         
       }
       
-      
       ## Check whether NULLs were passed out
       params_out_s1 <- check_null_params(params_out_s1, params_in_s1)
       
@@ -238,8 +236,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
         attr(params_out_s1[[i]], 'summary') <- NULL
         write.g3.param(params_out_s1[[i]],
                        out_path,
-                       paste0('params.out.stage1.', i),
-                       add_parscale = use_parscale)
+                       paste0('params.out.stage1.', i)
+                       )
       }
     }
     else{ 
@@ -308,8 +306,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     for (i in names(params_in_s2)){
       write.g3.param(params_in_s2[[i]],
                      out_path,
-                     paste0('params.in.stage2.', i),
-                     add_parscale = use_parscale)
+                     paste0('params.in.stage2.', i)
+                     )
     }  
     
     save(params_in_s2, file = file.path(out_path, 'params_in_s2.Rdata'))
@@ -362,8 +360,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       attr(params_out_s2[[i]], 'summary') <- NULL
       write.g3.param(params_out_s2[[i]],
                      out_path,
-                     paste0('params.out.stage2.', i),
-                     add_parscale = use_parscale)
+                     paste0('params.out.stage2.', i)
+                     )
     }
     
     ## ------------ Final parameter set ------------------------------------------
@@ -403,8 +401,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       
       write.g3.param(params_final,
                      out_path,
-                     'params.final',
-                     add_parscale = use_parscale)
+                     'params.final')
       
       ## Write the calculated and approximated weights to file
       approx_weights %>% 

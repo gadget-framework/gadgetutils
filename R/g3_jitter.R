@@ -197,13 +197,3 @@ jitter_params <- function(params,
   return(params[, names(params) != 'old_value'])
   
 }
-
-#' Jitters a parameters values
-#'
-#' @param param A row from a g3 tmb parameter template
-#' @param jitter_fraction The fraction of jittering for a value
-#' @return Jittered set of parameters
-#' @export
-jitter_param <- function(param, jitter_fraction = 0.05){
-  .Defunct()
-}

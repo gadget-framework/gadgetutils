@@ -4,7 +4,6 @@
 ##
 ## -----------------------------------------------------------------------------
 
-#' @export
 echo_message <- function(...){
   system(sprintf("echo '%s'", paste0(..., collapse = '')))
 }

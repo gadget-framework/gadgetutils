@@ -102,8 +102,8 @@ g3_retro <- function(gd, outdir = 'RETRO',
   for (i in names(retro_params_out)){
     write.g3.param(retro_params_out[[i]],
                    out_path,
-                   paste0('retro.params.out.', i, 'year'),
-                   add_parscale = use_parscale)
+                   paste0('retro.params.out.', i, 'year')
+                   )
   }
   
   return(retro_params_out)

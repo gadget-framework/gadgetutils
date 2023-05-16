@@ -1,8 +1,9 @@
+#' @title A wrapper for write.g3.file that formats a gadget3 TMB parameter data.frame for writing to file
+#' @param params A TMB parameter data.frame
+#' @param gd Directory to write the file
+#' @param file_name Name of the file
 #' @export
-write.g3.param <- function(params, gd, file_name, add_parscale = TRUE){
-  
-  ## Add parscale if used
-  if (add_parscale) params <- g3_add_parscale(params)
+write.g3.param <- function(params, gd, file_name){
   
   ## Modify columns
   params$value <- unlist(params$value)
@@ -14,6 +15,10 @@ write.g3.param <- function(params, gd, file_name, add_parscale = TRUE){
   
 }
 
+#' @title Writes an object to a file, typically just used within gadgetutils g3_ functions 
+#' @param obj An object to write to file
+#' @param gd Directory to write the file
+#' @param file_name Name of the file
 #' @export
 write.g3.file <- function(obj, gd, file_name){
   
@@ -31,28 +36,12 @@ write.g3.file <- function(obj, gd, file_name){
   
 }
 
+#' @title Reads a file from write.g3.file to an object. Now depreciated, using RData files for read/write.
+#' @param gd Directory to write the file
+#' @param file_name Name of the file
 #' @export
 read.g3.param <- function(gd, file.name){
-  
-  path <- file.path(gd, file.name)
-  if (!file.exists(path)){
-    stop(paste0('The file: ', path, ' does not exist'))
-  }
-  
-  params <- utils::read.table(path, header = TRUE)
-  
-  ## Modify columns
-  params[params$type == '.', 'type'] <- ''
-  params$optimise <- as.logical(params$optimise)
-  params$random <- as.logical(params$random)
-  
-  ## Convert value columns to list
-  params$value <- as.list(params$value)
-  names(params$value) <- params$switch
-  
-  row.names(params) <- params$switch
-  return(params)
-  
+  .Defunct()
 }
 
 
