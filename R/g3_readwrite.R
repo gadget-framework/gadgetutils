@@ -38,7 +38,7 @@ write.g3.file <- function(obj, gd, file_name){
 
 #' @title Reads a file from write.g3.file to an object. Now depreciated, using RData files for read/write.
 #' @param gd Directory to write the file
-#' @param file_name Name of the file
+#' @param file.name Name of the file
 #' @export
 read.g3.param <- function(gd, file.name){
   .Defunct()

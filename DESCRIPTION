@@ -1,13 +1,14 @@
 Package: gadgetutils
+Type: Package
 Title: Tools to create and maintain gadget3 models
 Version: 0.0.0.9000
-Authors@R: 
-    person(given = "First",
-           family = "Last",
-           role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Authors@R: c(person("William", "Butler", email="will.butler@hafogvatn.is",role = c("aut", "cre"), comment = c(ORCID = "0000-0002-3286-0748")),
+            person("Bjarki Thor", "Elvarsson", email="bjarki.elvarsson@hafogvatn.is",role = c("aut"), comment = c(ORCID = "0000-0001-5855-1188")),
+            person("Jamie", "Lentin", email="lentinj@shuttlethread.com",role = c("aut"), comment = c(ORCID = "0000-0001-5727-2996")),
+            person("Mikko", "Vihtakari", email = "mikko.vihtakari@hi.no",role = c("aut"), comment = c(ORCID = "0000-0003-0371-4319")),
+            person("Marine and Freshwater Research Institute (Iceland)", role = c("cph")))
+Maintainer: William Butler <will.butler@hafogvatn.is>
+Description: A collection of functions to aid (1) setting up and maintaining gadget3 models, (2) optimising, analysing, and running diagnostics on gadget3 models.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

@@ -57,8 +57,10 @@ g3_init_guess <- function(params, pattern,
   params[grepl(v_pattern, params$switch), 'optimise'] <- as.logical(optimise)
   
   return(params)
-}
+} 
 
+#' @title Added parscale to a parameter template. No longer needed.
+#' @param parameters A gadget3 parameter dataframe
 #' @export
 g3_add_parscale <- function(parameters){
   .Defunct()

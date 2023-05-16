@@ -54,6 +54,7 @@
 #' cv_floor setting. The cv_floor parameter sets the minimum of the estimated component 
 #' variance and thus the maximum of the inverser variance. 
 #' 
+#' @title Iterative re-weighting
 #' @param gd Directory to store output
 #' @param wgts Directory name within gd to store run outputs
 #' @param model A G3 model, produced by g3_to_r() or g3_tmb_adfun()
@@ -420,6 +421,11 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   return(params_final)  
 }
 
+#' @title Initial parameters for iterative re-weighting
+#' @param lik_out A likelihood summary dataframe. The output of g3_lik_out(model, param)
+#' @param grouping A list describing how to group likelihood components for iterative re-weighting
+#' @return A list of G3 parameter dataframes, one for each group of likelihood components
+#' @details Initial weights are calculated by taking the inverse SS and then multiplying these by 10000 for the components that are to be optimised 
 #' @export
 g3_iterative_setup <- function(lik_out,
                                grouping = list()){
@@ -470,6 +476,11 @@ g3_iterative_setup <- function(lik_out,
   return(out.params)
 }
 
+#' @title Likelihood summary for a model run
+#' @param model A G3 model, produced by g3_to_r() or g3_tmb_adfun()
+#' @param param A G3 parameter dataframe
+#' @return A dataframe containing the likelihood component name, degrees of freedom, NLL value, and weight
+#' @details Runs the model, sums the number of data points (df) and nll's for each component (value), and extracts the corresponding weights from the input parameters (weight)
 #' @export
 g3_lik_out <- function(model, param){
   
@@ -510,6 +521,12 @@ g3_lik_out <- function(model, param){
   return(lik.out)
 }
 
+#' @title Updates weights for second stage of iterative re-weighting
+#' @param lik_out_list A list of likelihood summarys. The output of g3_lik_out(model, param) for each group of likelihood components 
+#' @param grouping A list describing how to group likelihood components for iterative re-weighting
+#' @param cv_floor Minimum value of survey components (adist_surveyindices) as 1/\code{cv_floor}, applied prior to second stage of iterations. 
+#' @return A list of G3 parameter dataframes, one for each group of likelihood components
+#' @details This function updates weights for the second stage of iterative re-weighting. If the cv_floor is > 0, it will be applied here.
 #' @export
 g3_update_weights <- function(lik_out_list, grouping, cv_floor){
   
@@ -555,6 +572,8 @@ g3_update_weights <- function(lik_out_list, grouping, cv_floor){
   return(params)
 }
 
+#' @title Updates weights for second stage of iterative re-weighting. Replaced by g3_update_weights
+#' @param lik_out_list description
 #' @export
 g3_iterative_final <- function(lik_out_list){
   
@@ -580,13 +599,17 @@ g3_iterative_final <- function(lik_out_list){
   return(params)
 }
 
+#' @title Calculates likelihood component scores, including scores normalised by the minimum value
+#' @param lik_out Likelihood summary for a model run. Output of g3_lik_out(model, param)
+#' @param grouping A list describing how to group likelihood components for iterative re-weighting
+#' @return A list with a table of likelihood component scores (SS) and a table of normalised likelihood component scores (SS_norm)
 #' @export
-tabulate_SS <- function(lik.out, grouping){
+tabulate_SS <- function(lik_out, grouping){
   
   group_list <- split(grouping, grouping$group)
   
   SS <- 
-    lik.out %>% 
+    lik_out %>% 
     dplyr::bind_rows(.id = 'group') %>% 
     dplyr::mutate(comp = gsub('(cdist|adist)_([A-Za-z]+)_(.+)', '\\3', .data$comp)) %>% 
     dplyr::select(.data$group, .data$comp, .data$value) %>% 

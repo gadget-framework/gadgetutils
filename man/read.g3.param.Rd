@@ -9,7 +9,7 @@ read.g3.param(gd, file.name)
 \arguments{
 \item{gd}{Directory to write the file}
 
-\item{file_name}{Name of the file}
+\item{file.name}{Name of the file}
 }
 \description{
 Reads a file from write.g3.file to an object. Now depreciated, using RData files for read/write.

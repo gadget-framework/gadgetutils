@@ -1,3 +1,8 @@
+#' @title Shortcut weights 
+#' @description Estimates the weights for gadget3 likelihood components using shortcut (ie not iterative re-weighting) methods
+#' @param model A gadget3 model of class 'g3_cpp' or 'g3_r'
+#' @param params A gadget3 parameter dataframe
+#' @details This function attempts to estimate the weights of gadget3 likelihood components. The shortcut weights are calculated by taking the inverse of the residual variance. How the residual variance is calculated depends on the type of likelihood distribution, i.e., whether it is a catch or abundance distribution. The residual variance calculations are performed by the helper functions 'estimate_weights_cdist' (catch distributions) and 'estimate_weights_adist' (abundance distributions) 
 #' @export
 estimate_weights <- function(model, params){
   
@@ -32,6 +37,9 @@ estimate_weights <- function(model, params){
   return(out)
 }
 
+#' @title Residual variance for catch distributions
+#' @description Calculates the residual variance for catch distributions using a GLM
+#' @param dat Catch distribution model report (as a dataframe)
 #' @export
 estimate_weights_cdist <- function(dat){
   tmp <- 
@@ -40,7 +48,9 @@ estimate_weights_cdist <- function(dat){
     dplyr::group_by(.data$time) %>% 
     dplyr::mutate(p = .data$Freq/sum(.data$Freq)) 
   
-  # Adding this hack to avoid crashes when age column is not present in data. Note that there is no grouping by area, nor over stocks or time (but stocks and time are intentional, I think). Note also that the order of character vector under will define the column order. Remove this comment when you have read it. -Mikko
+  # Adding this hack to avoid crashes when age column is not present in data. 
+  # Note that there is no grouping by area, nor over stocks or time (but stocks and time are intentional, I think). 
+  # Note also that the order of character vector under will define the column order. Remove this comment when you have read it. -Mikko
   group_cols <- intersect(c("age", "length"), colnames(tmp))
   
   tmp %>% 
@@ -54,6 +64,9 @@ estimate_weights_cdist <- function(dat){
     dplyr::summarise(ss = sum((.data$p-.data$phat)^2/dplyr::n()), .groups = 'drop')
 }
 
+#' @title Residual variance for abundance distributions
+#' @description This function fits a loess model to abundance data and returns the residual variance of the model fit
+#' @param dat Abundance distribution model report (as a dataframe)
 #' @export
 estimate_weights_adist <- function(dat){
   tmp <-   
@@ -62,7 +75,7 @@ estimate_weights_adist <- function(dat){
     dplyr::mutate(time = .data$year)  
   tmp %>% ## TODO Mutate time to include 'step'
     modelr::add_predictions(
-      model = stats::loess(log(Freq) ~ time, span = 0.25,data=tmp)) %>% 
+      model = stats::loess(log(Freq) ~ time, span = 0.25, data = tmp)) %>% 
     dplyr::summarise(ss=sum((log(.data$Freq)-.data$pred)^2)/dplyr::n())
 }
 

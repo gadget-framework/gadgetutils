@@ -18,7 +18,8 @@ save_obj <- function(..., file) {
 ## does not complete. In these cases it would be useful to issue a warning and substitute
 ## in the input parameters to continue the optimisation
 
-#' @export
+## This is solely used in g3_iterative atm and there is no real reason to use it 
+## outside of that function
 check_null_params <- function(params_out, params_in){
   
   ## Get index of NULL elements

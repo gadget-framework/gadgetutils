@@ -527,6 +527,9 @@ g3_fit <- function(model,
   
 }
 
+#' @title Extracts year and step columns
+#' @description Gadget3 reports have a time column in the format 'YEAR-STEP'. This function creates a 'year' and 'step' column by splitting the existing 'time' column. This is useful for processing gagdet3 reports.
+#' @param data dataframe of gadget3 reports. Must include a 'time' column.
 #' @export
 extract_year_step <- function(data){
   
@@ -541,6 +544,10 @@ extract_year_step <- function(data){
     return()
   
 }
+
+## -----------------------------------------------------------------------------
+## Internal functions used by g3_fit
+## -----------------------------------------------------------------------------
 
 split_age <- function(data){
   tmp <-

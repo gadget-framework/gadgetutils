@@ -2,7 +2,7 @@
 % Please edit documentation in R/g3_iterative.R
 \name{g3_iterative}
 \alias{g3_iterative}
-\title{Perform multiple optimisation runs of a model, reweighting with each run}
+\title{Iterative re-weighting}
 \usage{
 g3_iterative(
   gd,
@@ -48,6 +48,9 @@ g3_iterative(
 Final set of parameters
 }
 \description{
+Perform multiple optimisation runs of a model, reweighting with each run
+}
+\details{
 An implementation of the iterative reweigthing of likelihood
 components in gadget. It analyzes a given gadget model and, after
 a series of optimisations where each likelihood component is
@@ -55,8 +58,7 @@ heavily weigthed, suggests a weigthing for the components based on
 the respective variance.  If one (or more) components, other than
 understocking and penalty, are 0 then the gadget optimisation with
 the final weights will not be completed.
-}
-\details{
+
 In Taylor et. al an objective reweighting scheme for likelihood
 components is described for cod in Icelandic waters. The authors
 nota that the issue of component weighting has been discussed for
