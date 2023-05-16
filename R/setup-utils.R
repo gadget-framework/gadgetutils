@@ -4,7 +4,7 @@
 #' @param mat A g3 stock object for mature specimens
 #' @param comp_id Part of stock name to use for parameters, e.g. 'species' will share parameters with both mature/immature
 #' @param mature Generate actions for mature (TRUE) or immature (FALSE) stock
-#' @param init_mode One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)
+#' @param init_mode One of: 0 (A single scalar that decays with mortality), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock), 3 (Initialised at equilibrium, special case for cetaceans, see https://gadget-framework.github.io/gadget-course/marine-mammals.html)
 #' @param exp_init Logical, whether the initial age-specific parameters should be exponentiated
 #' @param exp_init_scalar Logical, whether the initial scalar should be exponentiated
 #' @param exp_init_f Logical, whether the parameter 'init.f' should be exponentiated
@@ -26,43 +26,43 @@ init_abund <- function(imm,
   stopifnot(inherits(imm, 'g3_stock'))
   stopifnot(inherits(mat, 'g3_stock'))
   
-  g3a_initial_ageprop <- function(alpha, a50){
-    gadget3:::f_substitute(
-      ~bounded(-1*alpha*(age - a50),0,1),
-      list(alpha = alpha, a50 = a50))
+  ## Internal function to generate an age-based maturity ogive for initial abundance
+  g3a_initial_ageprop <- function(alpha, a50){  
+    gadget3:::f_substitute(~bounded(-1 * alpha * (age - a50), 0, 1),
+                           list(alpha = alpha, 
+                                a50 = a50)
+                           )
   }
   
   ## ---------------------------------------------------------------------------
   
-  stock <- if (mature) mat else imm
-  
-  ## MODE 0: initialised at equilibrium (using carrying capacity B0) assuming constant natual M (M)
+  ## MODE 0: A single scalar that leads to abundance at age based on mortality alone
   if (init_mode == 0){
     
-    ## Proportion mature
-    prop_mat0 <- gadget3::g3_parameterized(name = 'prop_mat0', by_stock = comp_id)
+    ## Proportion mature at age
+    p_age <- g3a_initial_ageprop(gadget3::g3_parameterized('mat_initial_alpha',
+                                                           by_stock = comp_id),
+                                 gadget3::g3_parameterized('mat_initial_a50',
+                                                           by_stock = comp_id))
     
+    ## Invert for immature stock
     if(!mature){
-      prop_mat0 <- gadget3:::f_substitute(~1-prop_mat0, list(prop_mat0 = prop_mat0))
+      p_age <- gadget3:::f_substitute(~1 - p_age, list(p_age = p_age))
     }
     
-    ## Equilibrium age distribution
-    init_scalar <- gadget3:::f_substitute(~p0 * B0 * (1-exp(-1*M))/(1-exp(-1*maxage*M)),
-                                          list(p0 = prop_mat0,
-                                               B0 = gadget3::g3_parameterized('B0',
-                                                                     by_stock = comp_id),
-                                               M = naturalmortality,
-                                               maxage = gadget3::g3_step(~stock_with(mat, mat__maxage))))
-    
-    out <- gadget3:::f_substitute(~scalar*init*exp(-1*(M+init_F)*(age-minage)),
-                                  list(scalar = init_scalar,
-                                       init = 1,
-                                       M = naturalmortality,
-                                       init_F = gadget3::g3_parameterized(name = 'init.F',
-                                                                          by_stock = comp_id,
-                                                                          exponentiate = exp_init_f),
-                                       minage = gadget3::g3_step(~stock_with(imm, imm__minage))))
-    
+    out <- 
+      gadget3::g3a_renewal_initabund(
+        scalar = gadget3::g3_parameterized(name = 'init.scalar', 
+                                           by_stock = comp_id, 
+                                           exponentiate = exp_init_scalar),
+        init = ~1,
+        M = naturalmortality,
+        init_F = gadget3::g3_parameterized(name = 'init.F', 
+                                           by_stock = comp_id, 
+                                           exponentiate = exp_init_f),
+        recage = gadget3::g3_stock_def(imm, 'minage'),
+        proportion_f = p_age
+      )
     
   }else{
     
@@ -77,45 +77,79 @@ init_abund <- function(imm,
       
       ## Invert for immature stock
       if(!mature){
-        p_age <- gadget3:::f_substitute(~1-p_age, list(p_age = p_age))
+        p_age <- gadget3:::f_substitute(~1 - p_age, list(p_age = p_age))
       }
-    
-      out <- gadget3:::f_substitute(~scalar*init*exp(-1*(M+init_F)*(age-minage))*p_age,
-                                    list(scalar = gadget3::g3_parameterized('init.scalar', 
-                                                                   by_stock = comp_id, 
-                                                                   exponentiate = exp_init_scalar),
-                                         init = gadget3::g3_parameterized(name = 'init', 
-                                                                 by_stock = list(imm, mat), 
-                                                                 by_age = TRUE, 
-                                                                 exponentiate = exp_init),
-                                         M = naturalmortality,
-                                         init_F = gadget3::g3_parameterized(name = 'init.F',
-                                                                   by_stock = comp_id,
-                                                                   exponentiate = exp_init_f),
-                                         minage = gadget3::g3_step(~stock_with(imm, imm__minage)),
-                                         p_age = p_age))
       
-      
+      out <- 
+        gadget3::g3a_renewal_initabund(
+          scalar = gadget3::g3_parameterized(name = 'init.scalar', 
+                                             by_stock = comp_id, 
+                                             exponentiate = exp_init_scalar),
+          init = gadget3::g3_parameterized(name = 'init', 
+                                           by_stock = list(imm, mat), 
+                                           by_age = TRUE, 
+                                           exponentiate = exp_init),
+          M = naturalmortality,
+          init_F = gadget3::g3_parameterized(name = 'init.F', 
+                                             by_stock = comp_id, 
+                                             exponentiate = exp_init_f),
+          recage = gadget3::g3_stock_def(imm, 'minage'),
+          proportion_f = p_age
+        )
     }
     else{
       
       ## MODE 2: Initial parameter per age group per stock
-      out <- gadget3:::f_substitute(~scalar*init*exp(-1*(M+init_F)*(age-minage)),
-                                    list(scalar = gadget3::g3_parameterized('init.scalar', 
-                                                                            by_stock = TRUE, 
-                                                                            exponentiate = exp_init_scalar),
-                                         init = gadget3::g3_parameterized(name = 'init', 
-                                                                          by_stock = TRUE, 
-                                                                          by_age = TRUE, 
-                                                                          exponentiate = exp_init),
+      if (init_mode == 2){
+        
+        out <-
+          gadget3::g3a_renewal_initabund(
+            scalar = gadget3::g3_parameterized(name = 'init.scalar', 
+                                               by_stock = TRUE, 
+                                               exponentiate = exp_init_scalar),
+            init = gadget3::g3_parameterized(name = 'init', 
+                                             by_stock = TRUE, 
+                                             by_age = TRUE, 
+                                             exponentiate = exp_init),
+            M = naturalmortality,
+            init_F = gadget3::g3_parameterized(name = 'init.F', 
+                                               by_stock = comp_id, 
+                                               exponentiate = exp_init_f),
+            recage = gadget3::g3_stock_def(imm, 'minage')
+          )  
+        
+      }else{
+        
+        ## MODE 3: special case for whales (see https://gadget-framework.github.io/gadget-course/marine-mammals.html)
+        ## Proportion mature
+        prop_mat0 <- gadget3::g3_parameterized(name = 'prop_mat0', by_stock = comp_id)
+        
+        if(!mature){
+          prop_mat0 <- gadget3:::f_substitute(~1-prop_mat0, list(prop_mat0 = prop_mat0))
+        }
+        
+        ## Equilibrium age distribution
+        init_scalar <- gadget3:::f_substitute(~p0 * N0 * (1-exp(-1*M))/(1-exp(-1*maxage*M)),
+                                              list(p0 = prop_mat0,
+                                                   N0 = gadget3::g3_parameterized('N0',
+                                                                                  by_stock = comp_id),
+                                                   M = naturalmortality,
+                                                   maxage = gadget3::g3_stock_def(mat, 'maxage')))
+        
+        out <- 
+          gadget3::g3a_renewal_initabund(scalar = init_scalar,
+                                         init = ~1,
                                          M = naturalmortality,
-                                         init_F = gadget3::g3_parameterized(name = 'init.F',
-                                                                            by_stock = comp_id,
+                                         init_F = gadget3::g3_parameterized(name = 'init.F', 
+                                                                            by_stock = comp_id, 
                                                                             exponentiate = exp_init_f),
-                                         minage = gadget3::g3_step(~stock_with(imm, imm__minage)))
-                                    )
+                                         recage = gadget3::g3_stock_def(imm, 'minage'),
+                                         proportion_f = p_age
+          )
+      }
       
     }
+    
   }
   
   return(out)
@@ -300,7 +334,10 @@ model_actions <- function(imm,
   natm <- setup_g3_param('M', by_stock = TRUE, tv_params, by_age_params, exp_params)
   
   ## Create some variables
-  initvonb <- gadget3::g3a_renewal_vonb(Linf = Linf, K = kk, recl = recl)
+  initvonb <- gadget3::g3a_renewal_vonb(Linf = Linf, 
+                                        K = kk, 
+                                        recl = recl,
+                                        recage = gadget3::g3_stock_def(imm, 'minage'))
   
   ## ---------------------------------------------------------------------------
   ## SETUP ACTIONS

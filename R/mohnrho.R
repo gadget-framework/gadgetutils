@@ -30,7 +30,7 @@ mohnrho <- function(fit, retrofit, vars = c('total.biomass', 'F', 'recruitment')
   fitd[,vars] <- (retd[, vars] - fitd[, vars]) / fitd[, vars]
   
   ## And then mohn
-  out <- aggregate(fitd[,vars], list(stock = fitd$stock), FUN = mean)
+  out <- stats::aggregate(fitd[,vars], list(stock = fitd$stock), FUN = mean)
   
   return(out)
   

@@ -25,6 +25,8 @@ g3_retro(
 
 \item{params}{Initial parameters to use with the model, this should be a TMB parameter template i.e. attr(tmb_model, 'parameter_template')}
 
+\item{nyears}{How many years back to go}
+
 \item{use_parscale}{Logical indicating whether optim(control$parscale) should be used}
 
 \item{method}{The optimisation method, see \code{\link[stats]{optim}}}
@@ -32,8 +34,6 @@ g3_retro(
 \item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
 
 \item{ncores}{The number of cores to use, defaults to the number available}
-
-\item{num.years}{How many years back to go}
 }
 \value{
 List optimised TMB parameter data.frames, the name of each list element corresponds to the number of years peeled in the retrospective analysis.

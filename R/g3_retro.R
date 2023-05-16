@@ -6,7 +6,7 @@
 #' @param outdir Directory name within gd to store run outputs
 #' @param model A G3 model, produced by g3_to_r() or g3_tmb_adfun()
 #' @param params Initial parameters to use with the model, this should be a TMB parameter template i.e. attr(tmb_model, 'parameter_template')
-#' @param num.years How many years back to go
+#' @param nyears How many years back to go
 #' @param use_parscale Logical indicating whether optim(control$parscale) should be used
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}

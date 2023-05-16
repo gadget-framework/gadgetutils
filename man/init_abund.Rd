@@ -25,7 +25,7 @@ init_abund(
 
 \item{mature}{Generate actions for mature (TRUE) or immature (FALSE) stock}
 
-\item{init_mode}{One of 0 (initialised at equilibrium), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock)}
+\item{init_mode}{One of: 0 (A single scalar that decays with mortality), 1 (Initial parameter per age group (across stocks)), 2 (Initial parameter per age group per stock), 3 (Initialised at equilibrium, special case for cetaceans, see https://gadget-framework.github.io/gadget-course/marine-mammals.html)}
 
 \item{exp_init}{Logical, whether the initial age-specific parameters should be exponentiated}
 
