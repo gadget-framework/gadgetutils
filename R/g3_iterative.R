@@ -572,33 +572,6 @@ g3_update_weights <- function(lik_out_list, grouping, cv_floor){
   return(params)
 }
 
-#' @title Updates weights for second stage of iterative re-weighting. Replaced by g3_update_weights
-#' @param lik_out_list description
-#' @export
-g3_iterative_final <- function(lik_out_list){
-  
-  weights <- 
-    lik_out_list %>% 
-    dplyr::bind_rows(.id = 'group') %>% 
-    dplyr::mutate(value = ifelse(.data$weight == 0, 0, .data$value)) %>% 
-    dplyr::group_by(.data$comp) %>% 
-    dplyr::filter(.data$value == min(.data$value, na.rm = TRUE)) %>% 
-    dplyr::select(.data$comp, .data$df, .data$value) %>% 
-    dplyr::distinct() %>% 
-    dplyr::mutate(weight = ifelse(.data$value == 0, 0, .data$df/.data$value),
-                  param_name = paste0(.data$comp, '_weight'))
-  
-  params <- 
-    lik_out_list %>% 
-    purrr::map(~attr(.,'param')) %>% 
-    purrr::map(function(x){
-      x$value[weights$param_name] <- 
-        weights$weight
-      x
-    })
-  return(params)
-}
-
 #' @title Calculates likelihood component scores, including scores normalised by the minimum value
 #' @param lik_out Likelihood summary for a model run. Output of g3_lik_out(model, param)
 #' @param grouping A list describing how to group likelihood components for iterative re-weighting
