@@ -113,7 +113,7 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
     )
   })
   
-  do.call('rbind', summary) |> write.g3.file(out_path, 'optim.summary.leaveout')
+  do.call('rbind', summary) %>% write.g3.file(out_path, 'optim.summary.leaveout')
   
   return(params_out)
   

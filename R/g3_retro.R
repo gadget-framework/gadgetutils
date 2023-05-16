@@ -97,7 +97,7 @@ g3_retro <- function(gd, outdir = 'RETRO',
     )
   })
   
-  do.call('rbind', summary) |> write.g3.file(out_path, 'optim.summary.retro')
+  do.call('rbind', summary) %>% write.g3.file(out_path, 'optim.summary.retro')
   
   for (i in names(retro_params_out)){
     write.g3.param(retro_params_out[[i]],
