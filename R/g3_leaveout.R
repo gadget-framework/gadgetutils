@@ -84,7 +84,7 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
                                                 print_status = TRUE,
                                                 print_id = x)
                                      },
-                                     mc.cores = parallel::detectCores())
+                                     mc.cores = ncores)
   }
   else{
     params_out <- lapply(stats::setNames(names(params_in),
@@ -97,8 +97,7 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
                                     control = control,
                                     print_status = TRUE,
                                     print_id = x)
-                         },
-                         mc.cores = parallel::detectCores())
+                         })
   }
   
   ## Save output
