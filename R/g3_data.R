@@ -7,6 +7,8 @@
 #' @param floating_point_correction Logical indicating whether 1e-6 should be added to all numeric columns except for \code{year} and \code{step}. Corrects for floating point issues associated with certain numbers such as 28 and 57.
 #' @param verbose Logical indicating whether the function should return messages about potential assumptions when expected data are not specified.
 #' @details This function attempts to do the same than \code{mfdb_sample_*} functions: summarise data ready for gadget3, with the difference that this function uses dataframes instead of a SQL database as input data. Consequently, this function should be independent of mfdb if the functions that generate groups and intervals as the mfdb package (\code{mfdb_interval}, \code{mfdb_group}) were imported to a project with this function.
+#' 
+#' Importantly, \code{g3_data()} does not attempt to filter other data than length unlike \code{mfdb_sample_*} functions that filter all columns passed to \code{params}. 
 #' @export
 # @examples
 # data_count(
@@ -84,11 +86,6 @@ g3_data <- function(x, params = list(), method = "count", column_names = c("year
     params$area$all <- tmp
   }
   
-  # if(!"age" %in% names(params)) {
-  #   if(verbose) message("age not defined. Assuming no age aggregation.")
-  #   dt$age <- "all"
-  # }
-  
   ## Tests
   
   if (!is.list(params)) {
@@ -111,6 +108,20 @@ g3_data <- function(x, params = list(), method = "count", column_names = c("year
     dt <- dt[c("year", "step", "area", cols, method)]
   }
   
+  ## Filter closed upper/lower length intervals from data to avoid NAs
+  
+  if("length" %in% names(params) & "length" %in% cols) {
+    if(!is.null(attributes(params[["length"]])$open_ended)) {
+      if(!"lower" %in% attributes(params[["length"]])$open_ended) {
+      dt <- dt %>% dplyr::filter(.data$length >= min(params[["length"]]))
+      }
+      
+      if(!"upper" %in% attributes(params[["length"]])$open_ended) {
+        dt <- dt %>% dplyr::filter(.data$length <= max(params[["length"]]))
+      }
+    }
+  }
+  
   ## Grouping
   
   dt[names(params)] <-
@@ -119,14 +130,25 @@ g3_data <- function(x, params = list(), method = "count", column_names = c("year
       
       if(inherits(tmp, "mfdb_group")) {
         if(all(sapply(tmp, is.numeric))) {
+          
+          if(k == "step") {
+            if(!inherits(dt[[k]], c("numeric", "integer"))) {
+              stop("The step column in x has to be numeric")
+            }
+          }
+          
           tmp <- sapply(tmp, max)
           
-          if(floating_point_correction & k %in% cols) {
-            # dec_places <- as.integer(names(sort(table(decimalplaces(tmp)), decreasing = TRUE))[1])
-            cut(dt[[k]] + 1e-6, c(-Inf, tmp), labels = names(tmp))
+          # if(floating_point_correction & k %in% cols) {
+          #   # dec_places <- as.integer(names(sort(table(decimalplaces(tmp)), decreasing = TRUE))[1])
+          #   cut(dt[[k]] + 1e-6, c(-Inf, tmp), labels = names(tmp))
+          # } else {
+          if(all(is.integer(dt[[k]]))) {
+            cut(as.integer(dt[[k]]), c(-Inf, tmp), labels = names(tmp))
           } else {
             cut(dt[[k]], c(-Inf, tmp), labels = names(tmp))
           }
+          # }
         } else if (all(sapply(tmp, is.character)) | all(sapply(tmp, is.factor))) {
           dplyr::recode(dt[[k]], !!!stats::setNames(names(tmp), unlist(tmp)))
         }

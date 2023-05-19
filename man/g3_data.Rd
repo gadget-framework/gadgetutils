@@ -31,4 +31,6 @@ Aggregates data from a data frame ready to be passed to gadget3. Useful for gene
 }
 \details{
 This function attempts to do the same than \code{mfdb_sample_*} functions: summarise data ready for gadget3, with the difference that this function uses dataframes instead of a SQL database as input data. Consequently, this function should be independent of mfdb if the functions that generate groups and intervals as the mfdb package (\code{mfdb_interval}, \code{mfdb_group}) were imported to a project with this function.
+
+Importantly, \code{g3_data()} does not attempt to filter other data than length unlike \code{mfdb_sample_*} functions that filter all columns passed to \code{params}.
 }
