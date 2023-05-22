@@ -75,7 +75,7 @@ estimate_weights_adist <- function(dat){
     dplyr::mutate(time = .data$year)  
   tmp %>% ## TODO Mutate time to include 'step'
     modelr::add_predictions(
-      model = stats::loess(log(Freq) ~ time, span = 0.25, data = tmp)) %>% 
+      model = stats::loess(log(Freq) ~ time, span = 0.75, data = tmp)) %>% 
     dplyr::summarise(ss=sum((log(.data$Freq)-.data$pred)^2)/dplyr::n())
 }
 
