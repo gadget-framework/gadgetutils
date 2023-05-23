@@ -1,7 +1,7 @@
 #' Wrapper for stats::optim that returns the g3_cpp parameter template with optimised values
 #'
-#' @param model A g3 model of class 'g3_cpp', i.e., model <- g3_to_tmb(actions)
-#' @param params The parameter template for a g3_cpp classed model
+#' @param model Either a g3 model of class 'g3_cpp', i.e., model <- gadget3::g3_to_tmb(actions), or an objective function from gadget3::g3_tmb_adfun(model, param)
+#' @param params The parameter template for a g3_cpp classed model. 
 #' @param use_parscale Should parscale be used g3_tmb_parscale(params), see \code{\link[stats]{optim}}
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
@@ -25,8 +25,8 @@ g3_optim <- function(model,
     cat("\nPlease provide a parameter data.frame, i.e. attr(tmb_model, 'parameter_template'\n")
     stop()
   }
-  if (!inherits(model, 'g3_cpp')){
-    cat("\nPlease provide a 'g3_cpp' classed model, i.e. resulting from g3_to_tmb(actions)\n")
+  if (!inherits(model, 'g3_cpp') & !all(c('par','fn','gr') %in% names(model))){
+    cat("\nPlease provide a 'g3_cpp' classed model, i.e. resulting from g3_to_tmb(actions), or an objective function resulting from g3_tmb_adfun()\n")
     stop()
   }
   if (!is.logical(use_parscale) || !is.logical(print_status)){
@@ -38,8 +38,14 @@ g3_optim <- function(model,
   if (print_status && nchar(print_id > 0)) print_id <- paste(' for', print_id)
   
   ## Create the objective function
-  if (print_status) echo_message('##  Creating objective function', print_id)
-  obj_fun <- gadget3::g3_tmb_adfun(model, params, ...)
+  if (inherits(model, 'g3_cpp')){
+    if (print_status) echo_message('##  Creating objective function', print_id)
+    obj_fun <- gadget3::g3_tmb_adfun(model, params, ...)  
+  }else{
+    if (print_status) echo_message('##  Using the provided objective function', print_id)
+    obj_fun <- model
+  }
+  
   
   ## Configure bounds for optimisation
   if (method == 'L-BFGS-B'){
