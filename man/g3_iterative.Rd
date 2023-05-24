@@ -16,6 +16,7 @@ g3_iterative(
   shortcut = FALSE,
   cv_floor = 0,
   resume_final = FALSE,
+  serial_compile = FALSE,
   mc.cores = parallel::detectCores()
 )
 }
@@ -41,6 +42,8 @@ g3_iterative(
 \item{cv_floor}{Minimum value of survey components (adist_surveyindices) as 1/\code{cv_floor}, applied prior to second stage of iterations.}
 
 \item{resume_final}{Logical value. If TRUE the re-weighting procedure starts at the second stage.}
+
+\item{serial_compile}{g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues}
 
 \item{mc.cores}{number of cores used, defaults to the number of available cores}
 }
