@@ -30,12 +30,12 @@ g3_init_guess <- function(params, pattern,
                       pattern)
   
   ## Make sure parameter values are within bounds
-  if (value <= lower && optimise == 1) { 
+  if (any(value <= lower) & optimise == 1) { 
     warning(paste("The 'value' provided for", pattern,
                   "is <= the 'lower' bound and is therefore adjusted to fall within the bounds"))
     value <- max(lower, value) + 0.01*(upper - lower)
   } else{
-    if (value >= upper && optimise == 1) { 
+    if (any(value >= upper) & optimise == 1) { 
       warning(paste("The 'value' provided for", pattern,
                     "is >= the 'upper' bound and is therefore adjusted to fall within the bounds"))
       value <- min(upper, value) - 0.01*(upper - lower)
