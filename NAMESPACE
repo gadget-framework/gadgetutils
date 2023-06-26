@@ -2,6 +2,7 @@
 
 export("%>%")
 export(add_g3_attributes)
+export(bind_fit_components)
 export(estimate_weights)
 export(estimate_weights_adist)
 export(estimate_weights_cdist)
