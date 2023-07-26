@@ -35,7 +35,7 @@ g3_fit <- function(model,
           tmp <- NULL
       }
   } else if (inherits(model, "g3_cpp")) {
-      if (is.data.frame(params) && "report_detail" %in% names(params$switch) && printatstart == 1) {
+      if (is.data.frame(params) && "report_detail" %in% params$switch && printatstart == 1) {
           params['report_detail', 'value'] <- 1L
           tmp <- gadget3::g3_tmb_adfun(model, params)$report(gadget3::g3_tmb_par(params))
       } else {
