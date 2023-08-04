@@ -3,7 +3,7 @@
 #' Perform a leave-one-out analysis. This involves running a set of optimisations, 
 #' each one of which has a component (or set of components) turned off (i.e. weight = 0).
 #'
-#' \code{g3_leaveout} Performs a leave-one-out analysis.
+#' \code{g3_leaveout} performs a leave-one-out analysis.
 #' @name g3_leaveout
 #' @param gd Directory to store output
 #' @param outdir Directory name within gd to store run outputs
@@ -82,6 +82,9 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
   leaveout_params_out <- run_g3_optim(model, leaveout_params_in,
                                       use_parscale, method, control,
                                       serial_compile, mc.cores)
+  
+  ## Add class
+  class(leaveout_params_out) <- c('g3.leaveout', class(leaveout_params_out))
   
   ## Save output
   save(leaveout_params_out, file = file.path(out_path, 'leaveout_params_out.Rdata'))

@@ -68,6 +68,9 @@ g3_retro <- function(gd, outdir = 'RETRO',
                                    use_parscale, method, control,
                                    serial_compile, mc.cores)
   
+  ## Add class
+  class(retro_params_out) <- c('g3.retro', class(retro_params_out))
+  
   ## Save and write parameters
   save(retro_params_out, file = file.path(out_path, 'retro_params_out.Rdata'))
   

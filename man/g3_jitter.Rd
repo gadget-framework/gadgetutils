@@ -2,7 +2,7 @@
 % Please edit documentation in R/g3_jitter.R
 \name{g3_jitter}
 \alias{g3_jitter}
-\title{Runs a jitter analysis}
+\title{Jitter analysis}
 \usage{
 g3_jitter(
   gd,
@@ -51,5 +51,5 @@ g3_jitter(
 A list of optimised parameter data frames (one for each jitter)
 }
 \description{
-\code{g3_jitter} Performs a jitter analysis.
+\code{g3_jitter} performs a jitter analysis.
 }

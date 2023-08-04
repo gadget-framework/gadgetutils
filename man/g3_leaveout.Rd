@@ -46,5 +46,5 @@ Perform a leave-one-out analysis. This involves running a set of optimisations,
 each one of which has a component (or set of components) turned off (i.e. weight = 0).
 }
 \details{
-\code{g3_leaveout} Performs a leave-one-out analysis.
+\code{g3_leaveout} performs a leave-one-out analysis.
 }

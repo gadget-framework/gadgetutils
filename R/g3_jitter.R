@@ -1,6 +1,6 @@
-#' Runs a jitter analysis
+#' Jitter analysis
 #' 
-#' \code{g3_jitter} Performs a jitter analysis.
+#' \code{g3_jitter} performs a jitter analysis.
 #' @name g3_jitter
 #' @param gd Directory to store output
 #' @param outdir Directory name within gd to store run outputs
@@ -82,6 +82,9 @@ g3_jitter <- function(gd, outdir = 'JITTER',
   jitpar_out <- run_g3_optim(model, jitpar_in,
                              use_parscale, method, control,
                              serial_compile, mc.cores)
+  
+  ## Add class
+  class(jitpar_out) <- c('g3.jitter', class(jitpar_out))
   
   ## Save output
   save(jitpar_out, file = file.path(out_path, 'jitpar_out.Rdata'))
