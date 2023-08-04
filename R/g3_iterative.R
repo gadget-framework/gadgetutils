@@ -123,63 +123,6 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     
   }
   
-  ## Internal function to setup and run g3_optim
-  run_g3_optim <- function(model, params,
-                           use_parscale, method, control,
-                           serial_compile, mc.cores){
-    
-    ## Compiling the model prior to g3_optim?
-    if (serial_compile){
-      echo_message('##  COMPILING MODEL AND CREATING ADFUN IN SERIAL\n')
-      
-      objfns <- lapply(stats::setNames(names(params), names(params)), function(x){
-        print(x)
-        return(gadget3::g3_tmb_adfun(model, params[[x]]))
-      }) 
-      
-    }else{
-      objfns <- list(model)
-    }
-    
-    ## Now run g3_optim
-    ## In serial?
-    if (mc.cores == 1){
-      
-      out <- lapply(stats::setNames(names(params), names(params)), function(x){
-        
-        if (length(objfns) > 1) md <- x
-        else md <- 1
-        
-        return(
-          g3_optim(model = objfns[[md]],
-                   params = params[[x]],
-                   use_parscale = use_parscale,
-                   method = method,
-                   control = control,
-                   print_status = TRUE,
-                   print_id = x)  
-        )
-      })
-    }else{
-      out <- parallel::mclapply(stats::setNames(names(params), names(params)), function(x){
-        
-        if (length(objfns) > 1) md <- x
-        else md <- 1
-        
-        return(
-          g3_optim(model = objfns[[md]],
-                   params = params[[x]],
-                   use_parscale = use_parscale,
-                   method = method,
-                   control = control,
-                   print_status = TRUE,
-                   print_id = x)
-        )
-      }, mc.cores = mc.cores)
-    }
-    return(out)
-  }
-  
   ## ---------------------------------------------------------------------------
   ## APPROXIMATING WEIGHTS AND RUNNING THE OPTIMISATION
   ## ---------------------------------------------------------------------------

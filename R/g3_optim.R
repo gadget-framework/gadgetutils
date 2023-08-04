@@ -123,4 +123,72 @@ g3_optim <- function(model,
   return(params)
     
 }
+ 
+
+#' Wrapper for g3_optim. This is an internal function used by the g3_* functions
+#'
+#' @param model Either a g3 model of class 'g3_cpp', i.e., model <- gadget3::g3_to_tmb(actions), or an objective function from gadget3::g3_tmb_adfun(model, param)
+#' @param params The parameter template for a g3_cpp classed model. 
+#' @param use_parscale Should parscale be used g3_tmb_parscale(params), see \code{\link[stats]{optim}}
+#' @param method The optimisation method, see \code{\link[stats]{optim}}
+#' @param control List of control options for optim, see \code{\link[stats]{optim}}
+#' @param serial_compile g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues
+#' @param mc.cores number of cores used, defaults to the number of available cores
+#' @param ... Further arguments to be passed gadget3::g3_tmb_adfun, see \code{\link[gadget3]{g3_tmb_adfun}}
+#' @return A g3_cpp parameter template with optimised values
+#'
+run_g3_optim <- function(model, params,
+                         use_parscale, method, control,
+                         serial_compile, mc.cores, ...){
   
+  ## Compiling the model prior to g3_optim?
+  if (serial_compile){
+    echo_message('##  COMPILING MODEL AND CREATING ADFUN IN SERIAL\n')
+    
+    objfns <- lapply(stats::setNames(names(params), names(params)), function(x){
+      echo_message(' - Compiling component ', x)
+      return(gadget3::g3_tmb_adfun(model, params[[x]], ...))
+    }) 
+    
+  }else{
+    objfns <- list(model)
+  }
+  
+  ## Now run g3_optim
+  ## In serial?
+  if (mc.cores == 1){
+    
+    out <- lapply(stats::setNames(names(params), names(params)), function(x){
+      
+      if (length(objfns) > 1) md <- x
+      else md <- 1
+      
+      return(
+        g3_optim(model = objfns[[md]],
+                 params = params[[x]],
+                 use_parscale = use_parscale,
+                 method = method,
+                 control = control,
+                 print_status = TRUE,
+                 print_id = x)  
+      )
+    })
+  }else{
+    out <- parallel::mclapply(stats::setNames(names(params), names(params)), function(x){
+      
+      if (length(objfns) > 1) md <- x
+      else md <- 1
+      
+      return(
+        g3_optim(model = objfns[[md]],
+                 params = params[[x]],
+                 use_parscale = use_parscale,
+                 method = method,
+                 control = control,
+                 print_status = TRUE,
+                 print_id = x)
+      )
+    }, mc.cores = mc.cores)
+  }
+  return(out)
+}
