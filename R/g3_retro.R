@@ -75,15 +75,8 @@ g3_retro <- function(gd, outdir = 'RETRO',
   save(retro_params_out, file = file.path(out_path, 'retro_params_out.Rdata'))
   
   ## Write summary of optimisation settings and run details
-  summary <- lapply(names(retro_params_out), function(x){
-    return(
-      cbind(data.frame(nyears_peeled = x),
-            attr(retro_params_out[[x]], 'summary'), 
-            stringsAsFactors = FALSE)
-    )
-  })
-  
-  do.call('rbind', summary) %>% write.g3.file(out_path, 'optim.summary.retro')
+  check_params_out(retro_params_out, 'nyears_peeled') %>% 
+    write.g3.file(out_path, 'optim.summary.retro')
   
   for (i in names(retro_params_out)){
     write.g3.param(retro_params_out[[i]],

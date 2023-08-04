@@ -46,7 +46,6 @@ g3_optim <- function(model,
     obj_fun <- model
   }
   
-  
   ## Configure bounds for optimisation
   if (method == 'L-BFGS-B'){
     parhigh <- gadget3::g3_tmb_upper(params)
@@ -76,7 +75,6 @@ g3_optim <- function(model,
     
     optim(par = obj_fun$par, fn = obj_fun$fn, gr = obj_fun$gr,
           method = method,
-          
           lower = parlow, upper = parhigh,
           control = control)
     
@@ -109,7 +107,9 @@ g3_optim <- function(model,
     
   ## Add summary of input/output to an attribute of params
   attributes(params)$summary <- 
-    data.frame(method = method,
+    data.frame(type = 'g3.optim',
+               id = print_id,
+               method = method,
                maxiter = control$maxit,
                reltol = format(control$reltol, scientific = TRUE),
                optim_complete = ifelse(model.opt.fail, 0, 1),
@@ -117,7 +117,9 @@ g3_optim <- function(model,
                gd_calls = fit_opt$counts[2],
                convergence = ifelse(model.opt.fail, NA, 
                                     ifelse(fit_opt$convergence == 0, TRUE, FALSE)),
-               score = fit_opt$value
+               score = fit_opt$value,
+               return_complete = '',
+               comment = ''
                )
   
   return(params)
@@ -192,3 +194,75 @@ run_g3_optim <- function(model, params,
   }
   return(out)
 }
+
+#' Internal function to check whether g3_optim has succeeded or crashed. Used by the gadgetutils g3_* functions.
+#' 
+#' \code{check_params_out} checks for NULLs and try-errors in a list of g3 parameters
+#' @name check_params_out
+#' @param param_list List of g3 parameters
+#' @param id_name replacement name for 'id' in the output
+#' @return A data.frame that has collated the 'summary' attribute of each element of param_list.
+#'
+check_params_out <- function(param_list, id_name = NULL){
+  
+  stopifnot(is.list(param_list))
+  
+  classtype <- class(param_list)[grepl('^g3.', class(param_list))]
+  if (length(classtype) == 0) classtype <- NA
+  
+  parsum <- lapply(names(param_list), function(x){
+    
+    ## NULL
+    if (is.null(param_list[[x]])){
+      
+      warning(paste0('Optimisation failed: a NULL was produced for component: ', x))
+      
+      ## Construct the summary attribute if it does not exist
+      if (!is.null(attr(param_list[[x]], 'summary'))){
+        tmp <- attr(param_list[[x]], 'summary')
+      }else{
+        tmp <- data.frame(type = classtype,
+                          id = x,
+                          method = NA, maxiter = NA, reltol = NA,
+                          optim_complete = NA, fn_calls = NA, gd_calls = NA,
+                          convergence = NA, score = NA, 
+                          return_complete = 0,
+                          comment = 'Optimisation crashed: NULL issue')
+      }
+      
+      tmp$type <- classtype
+      tmp$id <- x
+      tmp$return_complete = 0
+      
+    }else{
+      ## try-error
+      if (inherits(param_list[[x]], "try-error")){
+        
+        warning(paste0('Optimisation failed: a try-error class was produced for component: ', x))
+        
+        tmp <- data.frame(type = classtype,
+                          id = x,
+                          method = NA, maxiter = NA, reltol = NA,
+                          optim_complete = NA, fn_calls = NA, gd_calls = NA,
+                          convergence = NA, score = NA,
+                          return_complete = 0,
+                          comment = paste0('Optimisation crashed: try-error message: ', 
+                                           attr(param_list[[x]], 'condition')))
+      }else{
+        
+        tmp <- attr(param_list[[x]], 'summary')
+        tmp$type <- classtype
+        tmp$id <- x
+        tmp$return_complete <- 1
+        
+      }
+    }
+    return(tmp)
+  })
+  
+  out <- dplyr::bind_rows(parsum) %>% `rownames<-`(NULL)
+  if (!is.null(id_name)) names(out)[names(out) == 'id'] <- id_name
+  return(out)
+  
+}
+

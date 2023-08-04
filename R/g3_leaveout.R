@@ -90,15 +90,14 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
   save(leaveout_params_out, file = file.path(out_path, 'leaveout_params_out.Rdata'))
   
   ## Summary of optimisation settings and run details
-  summary <- lapply(names(all_comps), function(x){
-    return(
-      cbind(data.frame(components_left_out = paste(all_comps[[x]], collapse = ', '),
-                       group = x),
-            attr(leaveout_params_out[[x]], 'summary'), stringsAsFactors = FALSE)
-    )
-  })
+  summary <- check_params_out(leaveout_params_out, 'group_excluded')
+  lookup <- lapply(all_comps, paste, collapse = ', ')
+  summary <- cbind(summary[,1:2],
+                   data.frame(components_excluded = 
+                                unlist(lookup[match(summary$group_excluded, names(lookup))], use.names = FALSE)),
+                   summary[,3:ncol(summary)])
   
-  do.call('rbind', summary) %>% write.g3.file(out_path, 'optim.summary.leaveout')
+  summary %>% write.g3.file(out_path, 'optim.summary.leaveout')
   
   return(leaveout_params_out)
   

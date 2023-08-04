@@ -90,33 +90,7 @@ g3_jitter <- function(gd, outdir = 'JITTER',
   save(jitpar_out, file = file.path(out_path, 'jitpar_out.Rdata'))
   
   ## Summary of optimisation settings and run details
-  summary <- lapply(names(jitpar_out), function(x){
-    
-    if(is.null(jitpar_out[[x]])) {
-      return({ 
-        data.frame(
-          jitter = x,
-          method = "Optimisation crashed: NULL issue",
-          convergence = FALSE)
-      })
-    }
-    
-    if(inherits(jitpar_out[[x]], "try-error")) {
-      return({
-        data.frame(
-          jitter = x, 
-          method = "Optimisation crashed: memory allocation fail", 
-          convergence = FALSE)
-      })
-    }
-    
-    cbind(data.frame(jitter = x),
-          attr(jitpar_out[[x]], 'summary'), 
-          stringsAsFactors = FALSE)
-  })
-  
-  dplyr::bind_rows(summary) %>% 
-    `rownames<-`(NULL) %>% 
+  check_params_out(jitpar_out, 'jitter_id') %>% 
     write.g3.file(out_path, 'optim.summary.jitter')
   
   return(jitpar_out)
