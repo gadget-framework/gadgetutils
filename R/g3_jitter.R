@@ -1,5 +1,7 @@
 #' Runs a jitter analysis
 #' 
+#' \code{g3_jitter} Performs a jitter analysis.
+#' @name g3_jitter
 #' @param gd Directory to store output
 #' @param outdir Directory name within gd to store run outputs
 #' @param model A G3 model, produced by g3_to_tmb() or g3_to_r()
@@ -11,8 +13,9 @@
 #' @param use_parscale Logical indicating whether optim(control$parscale) should be used
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
-#' @param ncores The number of cores to use, defaults to the number available
-#' @return Jittered set of parameters
+#' @param serial_compile g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues
+#' @param mc.cores The number of cores to use, defaults to the number available
+#' @return A list of optimised parameter data frames (one for each jitter)
 #' @export
 g3_jitter <- function(gd, outdir = 'JITTER',
                       model, params, 
@@ -21,7 +24,8 @@ g3_jitter <- function(gd, outdir = 'JITTER',
                       use_parscale = TRUE,
                       method = 'BFGS',
                       control = list(),
-                      ncores = parallel::detectCores()){
+                      serial_compile = FALSE,
+                      mc.cores = parallel::detectCores()){
   
   ## Some checks:
   ## We want the TMB parameter template
@@ -42,7 +46,7 @@ g3_jitter <- function(gd, outdir = 'JITTER',
   ## Jitter the params
   ## ---------------------------------------------------------------------------
   
-  if (ncores > 1){
+  if (mc.cores > 1){
     jitpar_in <- parallel::mclapply(stats::setNames(1:njits, 1:njits), 
                                     function(x){
                                       return(
@@ -51,7 +55,7 @@ g3_jitter <- function(gd, outdir = 'JITTER',
                                                       pattern_to_ignore, 
                                                       within_bounds)
                                       )
-                                    }, mc.cores = ncores) 
+                                    }, mc.cores = mc.cores) 
   }
   else{
     jitpar_in <- lapply(stats::setNames(1:njits, 1:njits), 
@@ -73,33 +77,11 @@ g3_jitter <- function(gd, outdir = 'JITTER',
   ## Run optimisation
   ## ---------------------------------------------------------------------------
   
-  ## Run the model
-  if (ncores > 1){
-    jitpar_out <- parallel::mclapply(stats::setNames(names(jitpar_in),
-                                                     names(jitpar_in)),
-                                     function(x){
-                                       g3_optim(model = model,
-                                                params = jitpar_in[[x]],
-                                                se_parscale = use_parscale,
-                                                method = method,
-                                                control = control,
-                                                print_status = TRUE,
-                                                print_id = x)
-                                     },
-                                     mc.cores = ncores)
-  } else {
-    jitpar_out <- lapply(stats::setNames(names(jitpar_in),
-                                         names(jitpar_in)),
-                         function(x){
-                           g3_optim(model = model,
-                                    params = jitpar_in[[x]],
-                                    use_parscale = use_parscale,
-                                    method = method,
-                                    control = control,
-                                    print_status = TRUE,
-                                    print_id = x)
-                         })
-  }
+  echo_message('##  RUNNING JITTER ANALYSIS\n')
+  
+  jitpar_out <- run_g3_optim(model, jitpar_in,
+                             use_parscale, method, control,
+                             serial_compile, mc.cores)
   
   ## Save output
   save(jitpar_out, file = file.path(out_path, 'jitpar_out.Rdata'))

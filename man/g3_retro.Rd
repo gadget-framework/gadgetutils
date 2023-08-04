@@ -13,7 +13,8 @@ g3_retro(
   use_parscale = TRUE,
   method = "BFGS",
   control = list(),
-  ncores = parallel::detectCores()
+  serial_compile = FALSE,
+  mc.cores = parallel::detectCores()
 )
 }
 \arguments{
@@ -33,7 +34,9 @@ g3_retro(
 
 \item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
 
-\item{ncores}{The number of cores to use, defaults to the number available}
+\item{serial_compile}{g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues}
+
+\item{mc.cores}{The number of cores to use, defaults to the number available}
 }
 \value{
 List optimised TMB parameter data.frames, the name of each list element corresponds to the number of years peeled in the retrospective analysis.

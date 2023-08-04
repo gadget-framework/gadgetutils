@@ -1,6 +1,10 @@
-#' Perform a leave-one-out analysis. This involves running a set of optimisations,
-#' each one of which has a component (or set of components) turned off (weight = 0).
+#' Leave-one-out analysis. 
+#' 
+#' Perform a leave-one-out analysis. This involves running a set of optimisations, 
+#' each one of which has a component (or set of components) turned off (i.e. weight = 0).
 #'
+#' \code{g3_leaveout} Performs a leave-one-out analysis.
+#' @name g3_leaveout
 #' @param gd Directory to store output
 #' @param outdir Directory name within gd to store run outputs
 #' @param model A G3 model, produced by g3_to_tmb() or g3_to_r()
@@ -9,8 +13,9 @@
 #' @param use_parscale Logical indicating whether optim(control$parscale) should be used
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
-#' @param ncores The number of cores to use, defaults to the number available
-#' @return A data.frame with the nll for each optimisation
+#' @param serial_compile g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues
+#' @param mc.cores The number of cores to use, defaults to the number available
+#' @return A list of optimised parameter data frames (one for each group)
 #' @export
 g3_leaveout <- function(gd, outdir = 'LOCV', 
                         model, params,
@@ -18,7 +23,8 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
                         use_parscale = TRUE,
                         method = 'BFGS',
                         control = list(),
-                        ncores = parallel::detectCores()){
+                        serial_compile = FALSE,
+                        mc.cores = parallel::detectCores()){
   
   ## Some checks:
   ## We want the TMB parameter template
@@ -58,62 +64,39 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
                        comps[!(comps %in% group_comps)]))
   
   ## Set up input parameters for each grouping that will be dropped
-  params_in <- lapply(all_comps, function(x, params){
+  leaveout_params_in <- lapply(all_comps, function(x, params){
     out <- params
     out$value[grepl(paste(paste0('_', x, '_weight'), collapse = '|'), params$switch)] <- 0
     return(out)
   }, params = params)
   
   ## Save output
-  save(params_in, file = file.path(out_path, 'params_in.Rdata'))
+  save(leaveout_params_in, file = file.path(out_path, 'leaveout_params_in.Rdata'))
   
   ## ---------------------------------------------------------------------------
   ## Run the optimisations
   ## ---------------------------------------------------------------------------
   
-  ## Run the model
-  if (ncores > 1){
-    params_out <- parallel::mclapply(stats::setNames(names(params_in),
-                                                     names(params_in)),
-                                     function(x){
-                                       g3_optim(model = model,
-                                                params = params_in[[x]],
-                                                use_parscale = use_parscale,
-                                                method = method,
-                                                control = control,
-                                                print_status = TRUE,
-                                                print_id = x)
-                                     },
-                                     mc.cores = ncores)
-  }
-  else{
-    params_out <- lapply(stats::setNames(names(params_in),
-                                         names(params_in)),
-                         function(x){
-                           g3_optim(model = model,
-                                    params = params_in[[x]],
-                                    use_parscale = use_parscale,
-                                    method = method,
-                                    control = control,
-                                    print_status = TRUE,
-                                    print_id = x)
-                         })
-  }
+  echo_message('##  RUNNING LEAVE-ONE-OUT ANALYSIS\n')
+  
+  leaveout_params_out <- run_g3_optim(model, leaveout_params_in,
+                                      use_parscale, method, control,
+                                      serial_compile, mc.cores)
   
   ## Save output
-  save(params_out, file = file.path(out_path, 'params_out.Rdata'))
+  save(leaveout_params_out, file = file.path(out_path, 'leaveout_params_out.Rdata'))
   
   ## Summary of optimisation settings and run details
   summary <- lapply(names(all_comps), function(x){
     return(
       cbind(data.frame(components_left_out = paste(all_comps[[x]], collapse = ', '),
                        group = x),
-            attr(params_out[[x]], 'summary'), stringsAsFactors = FALSE)
+            attr(leaveout_params_out[[x]], 'summary'), stringsAsFactors = FALSE)
     )
   })
   
   do.call('rbind', summary) %>% write.g3.file(out_path, 'optim.summary.leaveout')
   
-  return(params_out)
+  return(leaveout_params_out)
   
 }

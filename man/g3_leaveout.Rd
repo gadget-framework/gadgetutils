@@ -2,8 +2,7 @@
 % Please edit documentation in R/g3_leaveout.R
 \name{g3_leaveout}
 \alias{g3_leaveout}
-\title{Perform a leave-one-out analysis. This involves running a set of optimisations,
-each one of which has a component (or set of components) turned off (weight = 0).}
+\title{Leave-one-out analysis.}
 \usage{
 g3_leaveout(
   gd,
@@ -14,7 +13,8 @@ g3_leaveout(
   use_parscale = TRUE,
   method = "BFGS",
   control = list(),
-  ncores = parallel::detectCores()
+  serial_compile = FALSE,
+  mc.cores = parallel::detectCores()
 )
 }
 \arguments{
@@ -34,12 +34,17 @@ g3_leaveout(
 
 \item{control}{List of control options for optim, see \code{\link[stats]{optim}}}
 
-\item{ncores}{The number of cores to use, defaults to the number available}
+\item{serial_compile}{g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues}
+
+\item{mc.cores}{The number of cores to use, defaults to the number available}
 }
 \value{
-A data.frame with the nll for each optimisation
+A list of optimised parameter data frames (one for each group)
 }
 \description{
 Perform a leave-one-out analysis. This involves running a set of optimisations,
-each one of which has a component (or set of components) turned off (weight = 0).
+each one of which has a component (or set of components) turned off (i.e. weight = 0).
+}
+\details{
+\code{g3_leaveout} Performs a leave-one-out analysis.
 }

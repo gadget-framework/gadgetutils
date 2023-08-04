@@ -10,7 +10,8 @@
 #' @param use_parscale Logical indicating whether optim(control$parscale) should be used
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
-#' @param ncores The number of cores to use, defaults to the number available
+#' @param serial_compile g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues
+#' @param mc.cores The number of cores to use, defaults to the number available
 #' @return List optimised TMB parameter data.frames, the name of each list element corresponds to the number of years peeled in the retrospective analysis.
 #' @export
 g3_retro <- function(gd, outdir = 'RETRO',
@@ -19,7 +20,8 @@ g3_retro <- function(gd, outdir = 'RETRO',
                      use_parscale = TRUE,
                      method = 'BFGS',
                      control = list(),
-                     ncores = parallel::detectCores()){
+                     serial_compile = FALSE,
+                     mc.cores = parallel::detectCores()){
   
   ## Some checks:
   ## We want the TMB parameter template
@@ -56,34 +58,15 @@ g3_retro <- function(gd, outdir = 'RETRO',
   ## Save input parameters
   save(retro_params_in, file = file.path(out_path, 'retro_params_in.Rdata'))
   
-  ## Run the model
-  if (ncores > 1){
-    retro_params_out <- parallel::mclapply(stats::setNames(names(retro_params_in),
-                                                           names(retro_params_in)),
-                                           function(x){
-                                             g3_optim(model = model,
-                                                      params = retro_params_in[[x]],
-                                                      use_parscale = use_parscale,
-                                                      method = method,
-                                                      control = control,
-                                                      print_status = TRUE,
-                                                      print_id = x)
-                                             },
-                                           mc.cores = parallel::detectCores())
-    }
-  else{
-    retro_params_out <- lapply(stats::setNames(names(retro_params_in),
-                                               names(retro_params_in)),
-                               function(x){
-                                 g3_optim(model = model,
-                                          params = retro_params_in[[x]],
-                                          use_parscale = use_parscale,
-                                          method = method,
-                                          control = control,
-                                          print_status = TRUE,
-                                          print_id = x)
-                                 })
-  }
+  ## ---------------------------------------------------------------------------
+  ## Optimise the models
+  ## ---------------------------------------------------------------------------
+  
+  echo_message('##  RUNNING ANALYTICAL RETROSPECTIVE\n')
+  
+  retro_params_out <- run_g3_optim(model, retro_params_in,
+                                   use_parscale, method, control,
+                                   serial_compile, mc.cores)
   
   ## Save and write parameters
   save(retro_params_out, file = file.path(out_path, 'retro_params_out.Rdata'))
