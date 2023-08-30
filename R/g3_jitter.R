@@ -114,7 +114,7 @@ jitter_params <- function(params,
   params$old_value <- params$value
   
   ## Extract parameter values and bounds
-  pars <- gadget3::g3_tmb_par(params)
+  pars <- gadget3::g3_tmb_par(params, include_random = FALSE)
   pars_down <- gadget3::g3_tmb_lower(params)
   pars_up <- gadget3::g3_tmb_upper(params)
   
