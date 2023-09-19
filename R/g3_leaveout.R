@@ -47,7 +47,7 @@ g3_leaveout <- function(gd, outdir = 'LOCV',
   
   ## Get all individual components from params object
   comps <- params[grepl('_weight$', params$switch), 'switch']
-  comps <- gsub('^.dist_[a-z]+_|_weight', '', comps)
+  comps <- gsub('^.dist_(surveyindices_log|[a-z]+)_|_weight', '', comps)
   
   ## Group components
   group_comps <- do.call('c', grouping)
