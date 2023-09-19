@@ -533,7 +533,7 @@ tabulate_SS <- function(lik_out, grouping){
   SS <- 
     lik_out %>% 
     dplyr::bind_rows(.id = 'group') %>% 
-    dplyr::mutate(comp = gsub('(cdist|adist)_([A-Za-z]+)_(.+)', '\\3', .data$comp)) %>% 
+    dplyr::mutate(comp = gsub('(cdist|adist)_(surveyindices_log|[a-z]+)_(.+)', '\\3', .data$comp)) %>% 
     dplyr::select(.data$group, .data$comp, .data$value) %>% 
     tidyr::pivot_wider(names_from = .data$comp, values_from = .data$value, names_sort = TRUE) %>% 
     dplyr::left_join(group_list %>% 
