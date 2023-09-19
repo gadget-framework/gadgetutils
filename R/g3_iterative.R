@@ -383,7 +383,7 @@ g3_iterative_setup <- function(lik_out,
     stop('The groupings argument should be a list')
   }
   
-  if (!all(unlist(grouping) %in% gsub('^.dist_[a-z]+_', '', lik_out$comp))){
+  if (!all(unlist(grouping) %in% gsub('^.dist_(surveyindices_log|[a-z]+)_', '', lik_out$comp))){
     stop('The specified grouping do not all match component names')
   }
   
@@ -399,7 +399,7 @@ g3_iterative_setup <- function(lik_out,
   ldf <- 
     lik_out %>% 
     dplyr::mutate(param_name = paste0(.data$comp, '_weight'),
-                  comp = gsub('^.dist_[a-z]+_', '', .data$comp)) %>% 
+                  comp = gsub('^.dist_(surveyindices_log|[a-z]+)_', '', .data$comp)) %>% 
     dplyr::left_join(gps, by = 'comp') %>% 
     dplyr::mutate(init_weight = 1/.data$value,
                   group = purrr::map2(.data$group, .data$comp, 
