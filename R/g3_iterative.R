@@ -169,7 +169,7 @@ g3_iterative <- function(gd, wgts = 'WGTS',
       lik_init <- g3_lik_out(model, params.in)
       
       if (is.na(attr(lik_init, 'nll'))){
-        stop('The gadget model did not run')
+        stop("The gadget model's nll output was NaN. Use $report() and g3a_trace_nan() to help locate when this happened")
       }
       
       write.g3.file(lik_init, out_path, 'lik.init')
