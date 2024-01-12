@@ -128,11 +128,13 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   ## ---------------------------------------------------------------------------
   
   ## Will write out approximated weights whether or not the shortcut is run
-  approx_weights <- estimate_weights(model, params.in)
+  #approx_weights <- estimate_weights(model, params.in)
   
   if (shortcut){
     
     echo_message('##  RUNNING ITERATIVE SHORTCUT\n')
+    
+    approx_weights <- estimate_weights(model, params.in)
     
     ## First approximate weights and write to file
     write.g3.file(approx_weights, out_path, 'weights.final.shortcut')
@@ -254,6 +256,8 @@ g3_iterative <- function(gd, wgts = 'WGTS',
     ## Update params and weights for failed components
     if (length(failed_components > 0)){
       
+      approx_weights <- estimate_weights(model, params.in)
+      
       ## Find the weights for the failed component
       bad_pars <- 
         attr(params_in_s1, 'grouping') %>%
@@ -354,14 +358,14 @@ g3_iterative <- function(gd, wgts = 'WGTS',
                      'params.final')
       
       ## Write the calculated and approximated weights to file
-      approx_weights %>% 
-        dplyr::select(.data$comp, approx_weight = .data$weight) %>% 
-        dplyr::full_join(
+      # approx_weights %>% 
+      #   dplyr::select(.data$comp, approx_weight = .data$weight) %>% 
+      #   dplyr::full_join(
           params_final %>% 
             dplyr::filter(grepl('_weight$', .data$switch)) %>% 
             dplyr::select(comp = .data$switch, weight = .data$value) %>% 
-            dplyr::mutate(weight = unlist(.data$weight))
-          , by = 'comp') %>% 
+            dplyr::mutate(weight = unlist(.data$weight)) %>% 
+   #       , by = 'comp') %>% 
         write.g3.file(out_path, 'weights.final')
       
     }
