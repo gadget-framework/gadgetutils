@@ -92,7 +92,6 @@ g3_fit <- function(model,
   ## --------------------------------------------------------------
   
   ## To-do: add in age and length attributes from stock objects
-  
   ## Merge together catch distribution observations and predictions
   dat <- 
     tmp[grep('^cdist_.+__num$', names(tmp))] %>%
@@ -123,11 +122,12 @@ g3_fit <- function(model,
   
   ## Maturity
   ## TO-DO ADD LOWER AND UPPER
-  if (any(grepl('mat|sex', dat$name))){
-    
+  nastock_index <- is.na(dat$stock) & is.na(dat$stock_re)
+  if (all(nastock_index)){
+    stockdist <- NULL
+  }else{
     stockdist <- 
-      dat %>% 
-      dplyr::filter(grepl('mat|sex', .data$name)) %>%
+      dat[!nastock_index,] %>% 
       dplyr::group_by(.data$year, .data$step, .data$area, .data$length, .data$age, .data$name) %>%
       dplyr::mutate(pred.ratio = .data$predicted / sum(.data$predicted, na.rm = TRUE),
                     obs.ratio = .data$observed / sum(.data$observed, na.rm = TRUE),
@@ -136,17 +136,15 @@ g3_fit <- function(model,
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
                     dplyr::matches("stock|stock_re"), .data$lower, .data$upper, .data$length, .data$age, 
                     .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
-    
-  }else{
-    stockdist <- NULL
   }
   
   ## Age and Length distributions
-  if (any(grepl(c('ldist'), dat$name))){
+  if (all(!nastock_index)){
+    catchdist.fleets <- NULL
+  }else{
     
     catchdist.fleets <- 
-      dat %>% 
-      dplyr::filter(grepl('ldist', .data$name)) %>% 
+      dat[nastock_index,] %>% 
       dplyr::group_by(.data$year, .data$step, .data$area, .data$name) %>%
       dplyr::mutate(total.catch = sum(.data$observed, na.rm = TRUE),
                     total.pred = sum(.data$predicted, na.rm = TRUE),
@@ -164,11 +162,7 @@ g3_fit <- function(model,
                     dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
                     .data$obs, .data$total.catch, .data$observed,
                     .data$pred, .data$total.pred, .data$predicted, .data$residuals)
-    
-  }else{
-    catchdist.fleets <- NULL
   }
-  
   
   ## -------------------------------------------------------------------------
   
