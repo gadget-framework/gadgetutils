@@ -142,7 +142,6 @@ g3_fit <- function(model,
   if (all(!nastock_index)){
     catchdist.fleets <- NULL
   }else{
-    
     catchdist.fleets <- 
       dat[nastock_index,] %>% 
       dplyr::group_by(.data$year, .data$step, .data$area, .data$name) %>%
@@ -154,10 +153,12 @@ g3_fit <- function(model,
                     predicted = .data$predicted / sum(.data$predicted, na.rm = TRUE),
                     residuals = ifelse(.data$observed == 0, NA, .data$observed - .data$predicted)) %>% 
       dplyr::ungroup() %>%
-      split_age() %>% 
-      dplyr::mutate(age = ifelse(grepl('aldist', .data$name), 
-                                 paste0('age', .data$lower_age), 
-                                 paste0('all', .data$lower_age))) %>% 
+      split_age() %>%
+      dplyr::group_by(name) %>% 
+      dplyr::mutate(age = ifelse(length(unique(age)) == 1, 
+                                 paste0('all', lower_age),
+                                 paste0('age', lower_age))) %>% 
+      dplyr::ungroup() %>% 
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
                     dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
                     .data$obs, .data$total.catch, .data$observed,
