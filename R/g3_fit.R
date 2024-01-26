@@ -155,9 +155,8 @@ g3_fit <- function(model,
       dplyr::ungroup() %>%
       split_age() %>%
       dplyr::group_by(name) %>% 
-      dplyr::mutate(age = ifelse(length(unique(age)) == 1, 
-                                 paste0('all', lower_age),
-                                 paste0('age', lower_age))) %>% 
+      dplyr::mutate(age = dplyr::case_when(length(unique(age)) == 1 ~ paste0('all', lower_age),
+                                 TRUE ~ paste0('age', lower_age))) %>% 
       dplyr::ungroup() %>% 
       dplyr::select(.data$name, .data$year, .data$step, .data$area, 
                     dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
