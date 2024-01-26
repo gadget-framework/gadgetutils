@@ -388,7 +388,9 @@ g3_iterative_setup <- function(lik_out,
   }
   
   if (!all(unlist(grouping) %in% gsub('^.dist_(surveyindices_log|[a-z]+)_', '', lik_out$comp))){
-    stop('The specified grouping do not all match component names')
+    stop(paste(setdiff(unlist(grouping), gsub('^.dist_(surveyindices_log|[a-z]+)_', '', lik_out$comp)), collapse = ", "), 
+         " grouping names do not all match weight component names", 
+         ifelse(any(grepl("^log_", unlist(grouping))), ". There is log_ in front of a survey index. This should not be supplied any longer.", ""))
   }
   
   ## Setup groups for re-weighting (i.e. components to be optimised together)
