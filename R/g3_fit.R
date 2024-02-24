@@ -82,7 +82,12 @@ g3_fit <- function(model,
   
   
   ## Calculate the step size as a proportion
-  step_size <- 1/length(environment(gadget3:::g3_collate(attr(model, 'actions'))$`000`)$step_lengths)
+  step_lengths <- tmp$step_lengths
+  if (is.null(step_lengths)) {
+      model_f <- gadget3:::f_concatenate(gadget3:::g3_collate(attr(model, 'actions')))
+      step_lengths <- get('step_lengths', envir = environment(model_f), inherits = TRUE)
+  }
+  step_size <- 1/length(step_lengths)
 
   ##############################################################################
   ##############################################################################
