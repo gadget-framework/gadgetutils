@@ -450,6 +450,15 @@ g3_lik_out <- function(model, param){
   adfun <- gadget3::g3_tmb_adfun(model, param, type = 'Fun')
   res <- adfun$report(adfun$par)
   
+  ## Re-compile if reports were not added
+  if (is.null(res$nll)){
+    model <- gadget3::g3_to_tmb(c(attr(model, 'actions'),
+                                  list(gadget3::g3a_report_detail(attr(model, 'actions'), 
+                                                                  run_f = TRUE))))
+    adfun <- gadget3::g3_tmb_adfun(model, param, type = 'Fun')
+    res <- adfun$report(adfun$par)
+  }
+  
   lik.out <- 
     res[grep('dist_.+_obs__(wgt$|num$)', names(res), value = TRUE)] %>% 
     purrr::map(~sum(.>0)) %>% 
