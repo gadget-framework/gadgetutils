@@ -334,6 +334,7 @@ g3_fit <- function(model,
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$avg.length) %>% 
     dplyr::summarise(number = sum(.data$abundance), 
                      mean_weight = sum(.data$abundance*.data$weight)/sum(.data$abundance), .groups = 'drop') %>% 
+    tidyr::replace_na(list(mean_weight = 0)) %>% 
     dplyr::rename(length = .data$avg.length)
   
   
@@ -370,6 +371,7 @@ g3_fit <- function(model,
                      biomass_consumed = sum(.data$biomass_consumed)) %>% 
     dplyr::left_join(stock.full, by = c("year", "step", "area", "stock", "length")) %>% 
     dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/step_size) %>% 
+    tidyr::replace_na(list(mortality = 0)) %>% 
     dplyr::ungroup() %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$fleet) %>%
     dplyr::mutate(suit = .data$mortality / max(.data$mortality),
@@ -520,7 +522,7 @@ g3_fit <- function(model,
   if ('summary' %in% names(attributes(out_params))){
     attributes(out)$summary <- attr(out_params, 'summary')
   }
- 
+  
   class(out) <- c('gadget.fit',class(out))
   return(out)
   
@@ -553,7 +555,7 @@ split_age <- function(data){
     data %>% 
     dplyr::mutate(lower_age = gsub('(.+):(.+)', '\\1', .data$age),
                   upper_age = gsub('(.+):(.+)', '\\2', .data$age)) 
-    return(tmp)
+  return(tmp)
 }
 
 split_length <- function(data){
