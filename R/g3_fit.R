@@ -382,8 +382,8 @@ g3_fit <- function(model,
   ## Fleet info
   fleet.catches <- 
     predator.prey %>% 
-    dplyr::group_by(.data$year, .data$area, .data$predator, .data$prey) %>% 
-    dplyr::summarise(amount = sum(.data$biomass_consumed)) %>%
+    dplyr::group_by(.data$year, .data$step, .data$area, .data$predator, .data$prey) %>% 
+    dplyr::summarise(amount = sum(.data$biomass_consumed), .groups = 'drop') %>%
     dplyr::rename(fleet = .data$predator, stock = .data$prey)
   
   fleet.info <- 
@@ -400,9 +400,9 @@ g3_fit <- function(model,
     dplyr::group_by(.data$year, .data$step, .data$area, .data$fleet) %>%
     dplyr::summarise(harv.bio = sum(.data$suit * .data$number * .data$mean_weight)) %>%
     dplyr::left_join(fleet.catches %>% 
-                       dplyr::group_by(.data$year, .data$fleet, .data$area) %>% 
-                       dplyr::summarise(amount = sum(.data$amount)),
-                     by = c('year', 'area', 'fleet')) %>%
+                       dplyr::group_by(.data$year, .data$step, .data$fleet, .data$area) %>% 
+                       dplyr::summarise(amount = sum(.data$amount), .groups = 'drop'),
+                     by = c('year', 'step', 'area', 'fleet')) %>%
     dplyr::group_by(.data$year, .data$step, .data$area, .data$fleet) %>%
     dplyr::mutate(amount = ifelse(is.na(.data$amount), 0, .data$amount),
                   harv.rate = .data$amount / .data$harv.bio) %>% 
