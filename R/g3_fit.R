@@ -367,6 +367,7 @@ g3_fit <- function(model,
     fleet_reports %>%
     dplyr::left_join(suitability %>% select(-c(upper,lower)), by = c('year', 'step', 'stock', 'area', 'age', 'length', 'fleet')) %>% 
     dplyr::left_join(num_reports %>% select(-c(upper,lower,avg.length)) %>% rename(bioweight = weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
+    dplyr::mutate(suit = dplyr::case_when(number_consumed == 0 ~ 0, .default = .data$suit)) %>% 
     dplyr::mutate(length = .data$avg.length,
                   harv.bio = .data$abundance * .data$bioweight * .data$suit) %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$fleet, .data$length) %>%
@@ -382,7 +383,8 @@ g3_fit <- function(model,
     dplyr::mutate(suit = .data$harv.bio / .data$tb,
                   suit = ifelse(is.finite(.data$suit), .data$suit, 0)) %>%
     dplyr::rename(predator = .data$fleet, prey = .data$stock) %>% 
-    dplyr::select(-c(.data$number, .data$mean_weight))
+    dplyr::select(-c(.data$number, .data$mean_weight)) %>% 
+    dplyr::ungroup()
   
   ## Fleet info
   fleet.catches <- 
@@ -392,16 +394,14 @@ g3_fit <- function(model,
     dplyr::rename(fleet = .data$predator, stock = .data$prey)
   
   fleet.info <- 
-    stock.full %>%
-    dplyr::left_join(predator.prey %>% 
-                       dplyr::select(.data$year,
-                                     .data$step, 
-                                     .data$area,
-                                     fleet = .data$predator, 
-                                     stock = .data$prey, 
-                                     .data$length, 
-                                     .data$harv.bio),
-                     by = c('stock', 'year', 'step', 'area', 'length'), multiple = 'all') %>%
+    predator.prey %>% 
+    dplyr::select(.data$year,
+                  .data$step, 
+                  .data$area,
+                  fleet = .data$predator, 
+                  stock = .data$prey, 
+                  .data$length, 
+                  .data$harv.bio) %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$fleet) %>%
     dplyr::summarise(harv.bio = sum(.data$harv.bio)) %>%
     dplyr::left_join(fleet.catches %>% 
