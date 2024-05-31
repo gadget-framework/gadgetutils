@@ -213,28 +213,28 @@ g3_fit <- function(model,
   ## ----------------------------------------------------------------------
   #
   ## Suitability taken from predator.prey
-  # ## Suitability
-  # if (any(grepl('detail_(.+)__suit_', names(tmp)))){
-  #   
-  #   suitability_age <-
-  #     tmp[grep('detail_(.+)__suit_', names(tmp))] %>% 
-  #     purrr::map(as.data.frame.table, stringsAsFactors = F) %>%
-  #     dplyr::bind_rows(.id = 'comp') %>%
-  #     dplyr::mutate(stock = gsub('detail_(.+)__suit_(.+)$', '\\1', .data$comp),
-  #                   fleet = gsub('detail_(.+)__suit_(.+)$', '\\2', .data$comp),
-  #                   area = as.numeric(.data$area)) %>% 
-  #                   #length = gsub('len','', .data$length) %>% as.numeric(),
-  #                   #age = gsub('age','', .data$age) %>% as.numeric()) %>%
-  #     dplyr::bind_cols(split_length(.$length)) %>% 
-  #     extract_year_step() %>% 
-  #     dplyr::rename(suit = .data$Freq) %>%
-  #     dplyr::select(.data$year, .data$step, .data$area, .data$stock, 
-  #                   .data$length, .data$age, .data$fleet, .data$suit) %>%
-  #     tibble::as_tibble()
-  #   
-  # }else{
-  #   suitability_age <- NULL
-  # }
+  ## Suitability
+  if (any(grepl('detail_(.+)__suit_', names(tmp)))){
+
+    suitability <-
+      tmp[grep('detail_(.+)__suit_', names(tmp))] %>%
+      purrr::map(as.data.frame.table, stringsAsFactors = F) %>%
+      dplyr::bind_rows(.id = 'comp') %>%
+      dplyr::mutate(stock = gsub('detail_(.+)__suit_(.+)$', '\\1', .data$comp),
+                    fleet = gsub('detail_(.+)__suit_(.+)$', '\\2', .data$comp)) %>% 
+                    #area = as.numeric(.data$area)) %>%
+                    #length = gsub('len','', .data$length) %>% as.numeric(),
+                    #age = gsub('age','', .data$age) %>% as.numeric()) %>%
+      split_length() %>%
+      extract_year_step() %>%
+      dplyr::rename(suit = .data$Freq) %>%
+      dplyr::select(.data$year, .data$step, .data$area, .data$stock,
+                    .data$length, .data$upper, .data$lower, .data$age, .data$fleet, .data$suit) %>%
+      tibble::as_tibble()
+
+  }else{
+    suitability <- NULL
+  }
   
   ## --------------------------------------------------------------------------------
   
@@ -365,16 +365,21 @@ g3_fit <- function(model,
   ## Predator prey
   predator.prey <- 
     fleet_reports %>%
-    dplyr::mutate(length = .data$avg.length) %>% 
+    dplyr::left_join(suitability %>% select(-c(upper,lower)), by = c('year', 'step', 'stock', 'area', 'age', 'length', 'fleet')) %>% 
+    dplyr::left_join(num_reports %>% select(-c(upper,lower,avg.length)) %>% rename(bioweight = weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
+    dplyr::mutate(length = .data$avg.length,
+                  harv.bio = .data$abundance * .data$bioweight * .data$suit) %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$fleet, .data$length) %>%
     dplyr::summarise(number_consumed = sum(.data$number_consumed),
-                     biomass_consumed = sum(.data$biomass_consumed)) %>% 
+                     biomass_consumed = sum(.data$biomass_consumed),
+                     harv.bio = sum(.data$harv.bio)) %>% 
     dplyr::left_join(stock.full, by = c("year", "step", "area", "stock", "length")) %>% 
     dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/step_size) %>% 
     tidyr::replace_na(list(mortality = 0)) %>% 
     dplyr::ungroup() %>% 
+    dplyr::mutate(tb = number * mean_weight) %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$fleet) %>%
-    dplyr::mutate(suit = .data$mortality / max(.data$mortality),
+    dplyr::mutate(suit = .data$harv.bio / .data$tb,
                   suit = ifelse(is.finite(.data$suit), .data$suit, 0)) %>%
     dplyr::rename(predator = .data$fleet, prey = .data$stock) %>% 
     dplyr::select(-c(.data$number, .data$mean_weight))
@@ -395,10 +400,10 @@ g3_fit <- function(model,
                                      fleet = .data$predator, 
                                      stock = .data$prey, 
                                      .data$length, 
-                                     .data$suit),
+                                     .data$harv.bio),
                      by = c('stock', 'year', 'step', 'area', 'length'), multiple = 'all') %>%
     dplyr::group_by(.data$year, .data$step, .data$area, .data$fleet) %>%
-    dplyr::summarise(harv.bio = sum(.data$suit * .data$number * .data$mean_weight)) %>%
+    dplyr::summarise(harv.bio = sum(.data$harv.bio)) %>%
     dplyr::left_join(fleet.catches %>% 
                        dplyr::group_by(.data$year, .data$step, .data$fleet, .data$area) %>% 
                        dplyr::summarise(amount = sum(.data$amount), .groups = 'drop'),
