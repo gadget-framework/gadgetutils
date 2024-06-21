@@ -176,6 +176,7 @@ run_g3_optim <- function(model, params,
       )
     })
   }else{
+    gc()  # NB: Trigger garbage collect before forking, so we don't inadventently copy unused memory
     out <- parallel::mclapply(stats::setNames(names(params), names(params)), function(x){
       
       if (length(objfns) > 1) md <- x
