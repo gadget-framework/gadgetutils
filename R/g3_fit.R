@@ -294,12 +294,36 @@ g3_fit <- function(model,
     dplyr::mutate(stock = gsub('detail_(.+)__wgt', '\\1', .data$comp)) %>% 
     dplyr::select(-.data$comp) 
   
+  # Extract names of everything with an abundance record
+  stock_names <- regmatches(names(tmp), regexec("^detail_(.+)__num$", names(tmp)))
+  # Pick out the capture group, throw away everything else
+  stock_names <- vapply(stock_names, function (x) {
+      if (length(x) == 2) x[[2]] else as.character(NA)
+  }, as.character(1))
+  stock_names <- stock_names[!is.na(stock_names)]
+
+  if (any(grepl("__cons$", names(tmp)))) {
+    # detail_(prey)_(pred)__cons arrays
+    consumption_re <- paste0(
+        "^detail",
+        "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+        "_(.+)",
+        "__cons" )
+  } else {
+    # Pre-predation stype __predby_ arrays
+    consumption_re <- paste0(
+        "^detail",
+        "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+        "__predby",
+        "_(.+)$" )
+  }
+
   fleet_reports <- 
-    tmp[grepl('detail_', names(tmp)) & !grepl('wgt$|num$|suit', names(tmp))] %>% 
+    tmp[grepl(consumption_re, names(tmp))] %>%
     purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'biomass_consumed') %>% 
     dplyr::bind_rows(.id='comp') %>% 
-    dplyr::mutate(stock = gsub('detail_(.+)__predby_(.+)', '\\1', .data$comp),
-                  fleet = gsub('detail_(.+)__predby_(.+)', '\\2', .data$comp)) %>% 
+    dplyr::mutate(stock = gsub(consumption_re, '\\1', .data$comp),
+                  fleet = gsub(consumption_re, '\\2', .data$comp)) %>%
     dplyr::select(-.data$comp) %>% 
     dplyr::left_join(weight_reports, by = c("time", "area", "stock", "age", "length")) %>% 
     split_length() %>% 
