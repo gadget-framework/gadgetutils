@@ -33,8 +33,7 @@ check_null_params <- function(params_out, params_in){
       
       ## Update the summary attribute if it exists
       if ('summary' %in% names(attributes(params_out[[i]]))){
-        attr(params_out[[i]], 'summary') <- cbind(attr(params_out[[i]], 'summary'),
-                                                  data.frame(return_complete = 1))
+        attr(params_out[[i]], 'summary')$return_complete <- 1
       }
       
     }
