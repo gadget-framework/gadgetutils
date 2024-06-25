@@ -233,7 +233,18 @@ g3_fit <- function(model,
       tibble::as_tibble()
 
   }else{
-    suitability <- NULL
+    warning("Cannot find suitability tables, no suitability data will be included in results")
+    suitability <- data.frame(
+        year = 1,
+        step = 1,
+        area = "a",
+        stock = "x",
+        length = "1:10",
+        upper = 1,
+        lower = 1,
+        age = "1",
+        fleet = "x",
+        suit = 1 )[c(),,drop = FALSE]
   }
   
   ## --------------------------------------------------------------------------------
