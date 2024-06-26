@@ -89,6 +89,14 @@ g3_fit <- function(model,
   }
   step_size <- 1/length(step_lengths)
 
+  # Extract names of everything with an abundance record
+  stock_names <- regmatches(names(tmp), regexec("^detail_(.+)__num$", names(tmp)))
+  # Pick out the capture group, throw away everything else
+  stock_names <- vapply(stock_names, function (x) {
+      if (length(x) == 2) x[[2]] else as.character(NA)
+  }, as.character(1))
+  stock_names <- stock_names[!is.na(stock_names)]
+
   ##############################################################################
   ##############################################################################
   
@@ -214,7 +222,26 @@ g3_fit <- function(model,
   #
   ## Suitability taken from predator.prey
   ## Suitability
-  if (any(grepl('detail_(.+)__suit_', names(tmp)))){
+  if (any(grepl('^suit_(.+)_(.+)__report', names(tmp)))){
+    suit_re <- paste0(
+        "^suit",
+        "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+        "_(.+)",
+        "__report" )
+    # New-style g3a_suitability_report() output
+    suitability <-
+      tmp[grep(suit_re, names(tmp))] %>%
+      purrr::map(as.data.frame.table, stringsAsFactors = F) %>%
+      dplyr::bind_rows(.id = 'comp') %>%
+      dplyr::mutate(stock = gsub(suit_re, '\\1', .data$comp),
+                    fleet = gsub(suit_re, '\\2', .data$comp)) %>%
+      split_length() %>%
+      extract_year_step() %>%
+      dplyr::rename(suit = "Freq") %>%
+      dplyr::select(-c("comp")) %>%
+      identity()
+
+  } else if (any(grepl('detail_(.+)__suit_', names(tmp)))){
 
     suitability <-
       tmp[grep('detail_(.+)__suit_', names(tmp))] %>%
@@ -305,14 +332,6 @@ g3_fit <- function(model,
     dplyr::mutate(stock = gsub('detail_(.+)__wgt', '\\1', .data$comp)) %>% 
     dplyr::select(-.data$comp) 
   
-  # Extract names of everything with an abundance record
-  stock_names <- regmatches(names(tmp), regexec("^detail_(.+)__num$", names(tmp)))
-  # Pick out the capture group, throw away everything else
-  stock_names <- vapply(stock_names, function (x) {
-      if (length(x) == 2) x[[2]] else as.character(NA)
-  }, as.character(1))
-  stock_names <- stock_names[!is.na(stock_names)]
-
   if (any(grepl("__cons$", names(tmp)))) {
     # detail_(prey)_(pred)__cons arrays
     consumption_re <- paste0(
@@ -400,7 +419,7 @@ g3_fit <- function(model,
   ## Predator prey
   predator.prey <- 
     fleet_reports %>%
-    dplyr::left_join(suitability %>% select(-c(upper,lower)), by = c('year', 'step', 'stock', 'area', 'age', 'length', 'fleet')) %>% 
+    dplyr::left_join(suitability) %>%
     dplyr::left_join(num_reports %>% select(-c(upper,lower,avg.length)) %>% rename(bioweight = weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
     dplyr::mutate(suit = dplyr::case_when(number_consumed == 0 ~ 0, .default = .data$suit)) %>% 
     dplyr::mutate(length = .data$avg.length,
@@ -573,6 +592,7 @@ g3_fit <- function(model,
 #' @param data dataframe of gadget3 reports. Must include a 'time' column.
 #' @export
 extract_year_step <- function(data){
+  if (!("time" %in% names(data))) return(data)
   
   if (any(!grepl('-', data$time))){
     data[!grepl('-', data$time), 'time'][[1]] <- paste0(data[!grepl('-', data$time), 'time'][[1]], '-0')
