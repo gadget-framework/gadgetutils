@@ -103,78 +103,84 @@ g3_fit <- function(model,
   ## --------------------------------------------------------------
   ## Catch distributions
   ## --------------------------------------------------------------
+  if (any(grepl('^cdist_.+__num$', names(tmp)))){
   
-  ## To-do: add in age and length attributes from stock objects
-  ## Merge together catch distribution observations and predictions
-  dat <- 
-    tmp[grep('^cdist_.+__num$', names(tmp))] %>%
-    purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
-    dplyr::bind_rows(.id = 'comp') %>%
-    dplyr::mutate(data_function = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\2', .data$comp),
-                  #type = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\3', .data$comp),
-                  #fleetnames = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\4', .data$comp),
-                  origin = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\4', .data$comp),
-                  name = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\3', .data$comp),
-                  #length = gsub('len', '', .data$length) %>% as.numeric(),
-                  area = tryCatch(as.numeric(as.factor(.data$area)),
-                                  error = function(z) 1)) %>%
-    split_length() %>%
-    dplyr::group_by(.data$name) %>% 
-    dplyr::group_modify(~replace_inf(.x)) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::mutate(avg.length = (.data$lower + .data$upper)/2) %>% 
-    dplyr::select(-.data$comp) %>%
-    extract_year_step() %>%
-    tidyr::pivot_wider(names_from = .data$origin, values_from = .data$Freq) %>% 
-    dplyr::rename(observed = .data$obs, predicted = .data$model) %>% 
-    tibble::as_tibble()
+    ## To-do: add in age and length attributes from stock objects
+    ## Merge together catch distribution observations and predictions
+    dat <- 
+      tmp[grep('^cdist_.+__num$', names(tmp))] %>%
+      purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
+      dplyr::bind_rows(.id = 'comp') %>%
+      dplyr::mutate(data_function = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\2', .data$comp),
+                    #type = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\3', .data$comp),
+                    #fleetnames = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\4', .data$comp),
+                    origin = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\4', .data$comp),
+                    name = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\3', .data$comp),
+                    #length = gsub('len', '', .data$length) %>% as.numeric(),
+                    area = tryCatch(as.numeric(as.factor(.data$area)),
+                                    error = function(z) 1)) %>%
+      split_length() %>%
+      dplyr::group_by(.data$name) %>% 
+      dplyr::group_modify(~replace_inf(.x)) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(avg.length = (.data$lower + .data$upper)/2) %>% 
+      dplyr::select(-.data$comp) %>%
+      extract_year_step() %>%
+      tidyr::pivot_wider(names_from = .data$origin, values_from = .data$Freq) %>% 
+      dplyr::rename(observed = .data$obs, predicted = .data$model) %>% 
+      tibble::as_tibble()
   
-  ## Add stock and stock_re columns if they dont exist
-  if (!('stock' %in% names(dat))) dat$stock <- NA
-  if (!('stock_re' %in% names(dat))) dat$stock_re <- NA
+    ## Add stock and stock_re columns if they dont exist
+    if (!('stock' %in% names(dat))) dat$stock <- NA
+    if (!('stock_re' %in% names(dat))) dat$stock_re <- NA
   
-  ## Maturity
-  ## TO-DO ADD LOWER AND UPPER
-  nastock_index <- is.na(dat$stock) & is.na(dat$stock_re)
-  if (all(nastock_index)){
+    ## Maturity
+    ## TO-DO ADD LOWER AND UPPER
+    nastock_index <- is.na(dat$stock) & is.na(dat$stock_re)
+    if (all(nastock_index)){
+      stockdist <- NULL
+    }else{
+      stockdist <- 
+        dat[!nastock_index,] %>% 
+        dplyr::group_by(.data$year, .data$step, .data$area, .data$length, .data$age, .data$name) %>%
+        dplyr::mutate(pred.ratio = .data$predicted / sum(.data$predicted, na.rm = TRUE),
+                      obs.ratio = .data$observed / sum(.data$observed, na.rm = TRUE),
+                      length = .data$avg.length) %>%
+        dplyr::ungroup() %>% 
+        dplyr::select(.data$name, .data$year, .data$step, .data$area, 
+                      dplyr::matches("stock|stock_re"), .data$lower, .data$upper, .data$length, .data$age, 
+                      .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
+    }
+
+    ## Age and Length distributions
+    if (all(!nastock_index)){
+      catchdist.fleets <- NULL
+    }else{
+      catchdist.fleets <- 
+        dat[nastock_index,] %>% 
+        dplyr::group_by(.data$year, .data$step, .data$area, .data$name) %>%
+        dplyr::mutate(total.catch = sum(.data$observed, na.rm = TRUE),
+                      total.pred = sum(.data$predicted, na.rm = TRUE),
+                      obs = .data$observed,
+                      pred = .data$predicted,
+                      observed = .data$observed / sum(.data$observed, na.rm = TRUE),
+                      predicted = .data$predicted / sum(.data$predicted, na.rm = TRUE),
+                      residuals = ifelse(.data$observed == 0, NA, .data$observed - .data$predicted)) %>% 
+        dplyr::ungroup() %>%
+        split_age() %>%
+        dplyr::group_by(name) %>% 
+        dplyr::mutate(age = dplyr::case_when(length(unique(age)) == 1 ~ paste0('all', lower_age),
+                                   TRUE ~ paste0('age', lower_age))) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::select(.data$name, .data$year, .data$step, .data$area, 
+                      dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
+                      .data$obs, .data$total.catch, .data$observed,
+                      .data$pred, .data$total.pred, .data$predicted, .data$residuals)
+    }
+  } else {
+    dat <- NULL
     stockdist <- NULL
-  }else{
-    stockdist <- 
-      dat[!nastock_index,] %>% 
-      dplyr::group_by(.data$year, .data$step, .data$area, .data$length, .data$age, .data$name) %>%
-      dplyr::mutate(pred.ratio = .data$predicted / sum(.data$predicted, na.rm = TRUE),
-                    obs.ratio = .data$observed / sum(.data$observed, na.rm = TRUE),
-                    length = .data$avg.length) %>%
-      dplyr::ungroup() %>% 
-      dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                    dplyr::matches("stock|stock_re"), .data$lower, .data$upper, .data$length, .data$age, 
-                    .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
-  }
-  
-  ## Age and Length distributions
-  if (all(!nastock_index)){
     catchdist.fleets <- NULL
-  }else{
-    catchdist.fleets <- 
-      dat[nastock_index,] %>% 
-      dplyr::group_by(.data$year, .data$step, .data$area, .data$name) %>%
-      dplyr::mutate(total.catch = sum(.data$observed, na.rm = TRUE),
-                    total.pred = sum(.data$predicted, na.rm = TRUE),
-                    obs = .data$observed,
-                    pred = .data$predicted,
-                    observed = .data$observed / sum(.data$observed, na.rm = TRUE),
-                    predicted = .data$predicted / sum(.data$predicted, na.rm = TRUE),
-                    residuals = ifelse(.data$observed == 0, NA, .data$observed - .data$predicted)) %>% 
-      dplyr::ungroup() %>%
-      split_age() %>%
-      dplyr::group_by(name) %>% 
-      dplyr::mutate(age = dplyr::case_when(length(unique(age)) == 1 ~ paste0('all', lower_age),
-                                 TRUE ~ paste0('age', lower_age))) %>% 
-      dplyr::ungroup() %>% 
-      dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                    dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
-                    .data$obs, .data$total.catch, .data$observed,
-                    .data$pred, .data$total.pred, .data$predicted, .data$residuals)
   }
   
   ## -------------------------------------------------------------------------
@@ -611,6 +617,8 @@ extract_year_step <- function(data){
 ## -----------------------------------------------------------------------------
 
 split_age <- function(data){
+  if (!('age' %in% names(data))) return(data)
+  
   tmp <-
     data %>% 
     dplyr::mutate(lower_age = gsub('(.+):(.+)', '\\1', .data$age),
@@ -619,6 +627,7 @@ split_age <- function(data){
 }
 
 split_length <- function(data){
+  if (!('length' %in% names(data))) return(data)
   
   tmp <-
     data %>% 
