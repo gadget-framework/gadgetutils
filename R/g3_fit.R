@@ -420,7 +420,7 @@ g3_fit <- function(model,
   predator.prey <- 
     fleet_reports %>%
     dplyr::left_join(suitability) %>%
-    dplyr::left_join(num_reports %>% select(-c(upper,lower,avg.length)) %>% rename(bioweight = weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
+    dplyr::left_join(num_reports %>% dplyr::select(-c(upper,lower,avg.length)) %>% dplyr::rename(bioweight = weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
     dplyr::mutate(suit = dplyr::case_when(number_consumed == 0 ~ 0, .default = .data$suit)) %>% 
     dplyr::mutate(length = .data$avg.length,
                   harv.bio = .data$abundance * .data$bioweight * .data$suit) %>% 
