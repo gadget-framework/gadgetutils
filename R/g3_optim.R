@@ -7,6 +7,7 @@
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
 #' @param print_status Print step comments, does not suppress comments from optim call (see control$trace)
 #' @param print_id A character string appended to the print statements (useful for when running g3_optim in parallel)
+#' @param check_finite boolean Should we check that initial/final conditions produce finite results before running?
 #' @param ... Further arguments to be passed gadget3::g3_tmb_adfun, see \code{\link[gadget3]{g3_tmb_adfun}}
 #' @return A g3_cpp parameter template with optimised values
 #'
@@ -18,6 +19,7 @@ g3_optim <- function(model,
                      control = list(),
                      print_status = FALSE,
                      print_id = 'g3_optim',
+                     check_finite = TRUE,
                      ...){
   
   ## Checks
@@ -64,8 +66,34 @@ g3_optim <- function(model,
   ## Using parscale?
   if (use_parscale){
     control <- c(control, list(parscale = gadget3::g3_tmb_parscale(params)))
-    if(any(is.na(gadget3::g3_tmb_parscale(params)))){
-      stop('Error NAs detected in parscale')
+    x <- gadget3::g3_tmb_parscale(params)
+    if (any(is.na(x))){
+      # Put FALSE/TRUE back into parameter list (to get the pre-cpp names), extract names of TRUE values
+      par_names <- names(Filter(
+          function(y) identical(y, TRUE),
+          g3_tmb_relist(params, is.na(x)) ))
+      stop('Error NAs detected in parscale', print_id, ": ", paste(par_names, collapse = ", "))
+    }
+  }
+
+  if (check_finite) {
+    if (print_status) echo_message('##  Checking initial conditions', print_id)
+
+    x <- obj_fun$fn(obj.fn$par)
+    if (!is.finite(x)) {
+      warning("Initial conditions", print_id, " produce a non-finite likelihood. Use g3a_trace_nan() to help locate when this happened: ", x)
+    } else {
+      x <- obj_fun$gr(obj_fun$par)
+      if (any(!is.finite(x))) {
+        # Flatten (params x 1) arrays, if that's what's returned
+        if (length(dim(x)) > 1) x <- colSums(x, na.rm = FALSE)
+        names(x) <- names(obj_fun$par)
+        # Put FALSE/TRUE back into parameter list (to get the pre-cpp names), extract names of TRUE values
+        par_names <- names(Filter(
+            function(y) identical(y, TRUE),
+            g3_tmb_relist(params, !is.finite(x)) ))
+        warning("Initial conditions", print_id, " produce a non-finite gradient in: ", paste(par_names, collapse = ", "))
+      }
     }
   }
   
@@ -99,6 +127,26 @@ g3_optim <- function(model,
                                    '. Convergence = ',
                                    ifelse(fit_opt$convergence == 0, TRUE, FALSE))
     
+    if (check_finite) {
+      if (print_status) echo_message('##  Checking optimised parameters', print_id)
+
+      x <- obj_fun$fn(fit_opt$par)
+      if (!is.finite(x)) {
+        warning("Optimised parameters", print_id, " produce a non-finite likelihood. Use g3a_trace_nan() to help locate when this happened: ", x)
+      } else {
+        x <- obj_fun$gr(fit_opt$par)
+        if (any(!is.finite(x))) {
+          # Flatten (params x 1) arrays, if that's what's returned
+          if (length(dim(x)) > 1) x <- colSums(x, na.rm = FALSE)
+          names(x) <- names(fit_opt$par)
+          # Put FALSE/TRUE back into parameter list (to get the pre-cpp names), extract names of TRUE values
+          par_names <- names(Filter(
+              function(y) identical(y, TRUE),
+              g3_tmb_relist(params, !is.finite(x)) ))
+          warning("Optimised parameters", print_id, " produce a non-finite gradient in: ", paste(par_names, collapse = ", "))
+        }
+      }
+    }
   }
     
   ## Optimised parameters  
