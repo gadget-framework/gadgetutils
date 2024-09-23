@@ -35,7 +35,7 @@ g3_optim <- function(model,
   }
   
   ## Prefix for printing
-  if (print_status && nchar(print_id > 0)) print_id <- paste(' for', print_id)
+  if (nchar(print_id > 0)) print_id <- paste(' for', print_id)
   
   ## Create the objective function
   if (inherits(model, 'g3_cpp')){
