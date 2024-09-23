@@ -130,7 +130,7 @@ g3_optim <- function(model,
 #' Wrapper for g3_optim. This is an internal function used by the g3_* functions
 #'
 #' @param model Either a g3 model of class 'g3_cpp', i.e., model <- gadget3::g3_to_tmb(actions), or an objective function from gadget3::g3_tmb_adfun(model, param)
-#' @param params The parameter template for a g3_cpp classed model. 
+#' @param params A list of parameter templates for a g3_cpp classed model.
 #' @param use_parscale Should parscale be used g3_tmb_parscale(params), see \code{\link[stats]{optim}}
 #' @param method The optimisation method, see \code{\link[stats]{optim}}
 #' @param control List of control options for optim, see \code{\link[stats]{optim}}
@@ -182,16 +182,23 @@ run_g3_optim <- function(model, params,
       if (length(objfns) > 1) md <- x
       else md <- 1
       
-      return(
-        g3_optim(model = objfns[[md]],
+      # parallel::mclapply eats warnings, so we have to capture them and replay them outside
+      ww <- list()
+      withCallingHandlers({
+        out <- g3_optim(model = objfns[[md]],
                  params = params[[x]],
                  use_parscale = use_parscale,
                  method = method,
                  control = control,
                  print_status = TRUE,
                  print_id = x)
-      )
+      }, warning = function (w) { ww <<- c(ww, list(w)) })
+
+      return(list(out = out, ww = ww))
     }, mc.cores = mc.cores)
+    # Re-trigger warnings outside of mclapply
+    for (o in out) for (w in o$ww) warning(w)
+    out <- lapply(out, function(o) o$out)
   }
   return(out)
 }
