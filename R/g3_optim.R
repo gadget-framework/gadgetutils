@@ -17,7 +17,7 @@ g3_optim <- function(model,
                      method = 'BFGS',
                      control = list(),
                      print_status = FALSE,
-                     print_id = '',
+                     print_id = 'g3_optim',
                      ...){
   
   ## Checks
