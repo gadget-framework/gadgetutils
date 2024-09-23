@@ -83,7 +83,7 @@ g3_optim <- function(model,
   ## Check whether the optimisation crashed
   if (inherits(fit_opt, 'try-error')){
     model.opt.fail <- TRUE
-    warning(paste0('The optimisation failed', print_id))
+    warning("Optimisation", print_id, " failed: ", paste(as.character(fit_opt), collapse = " "))
     
     ## Construct failed fit_opt object
     fit_opt <- list(par = gadget3::g3_tmb_par(params),
