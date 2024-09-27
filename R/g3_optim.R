@@ -244,9 +244,18 @@ run_g3_optim <- function(model, params,
 
       return(list(out = out, ww = ww))
     }, mc.cores = mc.cores)
-    # Re-trigger warnings outside of mclapply
-    for (o in out) for (w in o$ww) warning(w)
-    out <- lapply(out, function(o) o$out)
+    out <- lapply(out, function(o) {
+      if (inherits(o, "try-error")) {
+        warning("Optimisation failed: ", as.character(o))
+        return(o)
+      }
+      if (identical(names(o), c("out", "ww"))) {
+        # Re-trigger warnings outside of mclapply
+        for (w in o$ww) warning(w)
+        return(o$out)
+      }
+      return(o)
+    })
   }
   return(out)
 }
