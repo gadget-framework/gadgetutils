@@ -79,7 +79,7 @@ g3_optim <- function(model,
   if (check_finite) {
     if (print_status) echo_message('##  Checking initial conditions', print_id)
 
-    x <- obj_fun$fn(obj.fn$par)
+    x <- obj_fun$fn(obj_fun$par)
     if (!is.finite(x)) {
       warning("Initial conditions", print_id, " produce a non-finite likelihood. Use g3a_trace_nan() to help locate when this happened: ", x)
     } else {
