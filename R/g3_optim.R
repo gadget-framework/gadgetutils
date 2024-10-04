@@ -209,6 +209,7 @@ run_g3_optim <- function(model, params,
   if (mc.cores == 1){
     
     out <- lapply(stats::setNames(names(params), names(params)), function(x){
+      gc()  # Trigger garbage collect, to get rid of previous objective functions
       
       if (length(objfns) > 1) md <- x
       else md <- 1
