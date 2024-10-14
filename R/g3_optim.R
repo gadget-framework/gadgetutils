@@ -150,7 +150,7 @@ g3_optim <- function(model,
   }
     
   ## Optimised parameters  
-  p <- gadget3::g3_tmb_relist(params, fit_opt$par)
+  p <- gadget3::g3_tmb_relist(params, obj_fun$env$last.par.best)
   params$value[names(p)] <- p
     
   ## Add summary of input/output to an attribute of params
