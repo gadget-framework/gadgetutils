@@ -149,7 +149,7 @@ g3_optim <- function(model,
     }
   }
     
-  ## Optimised parameters  
+  ## Optimised parameters, obj_fun$env$last.par.best contains both fixed and random effect parameter estimates. 
   p <- gadget3::g3_tmb_relist(params, obj_fun$env$last.par.best)
   params$value[names(p)] <- p
     
