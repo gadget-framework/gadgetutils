@@ -405,7 +405,7 @@ g3_iterative_setup <- function(lik_out,
   ldf <- 
     lik_out %>% 
     dplyr::mutate(param_name = paste0(.data$comp, '_weight'),
-                  comp = gsub('^.dist_(surveyindices_log|[a-z]+)_', '', .data$comp)) %>% 
+                  comp = gsub('(^.dist_(surveyindices_log|[a-z]+)_)|(^(asparse|csparse)_([a-z]+)_)', '', .data$comp)) %>% 
     dplyr::left_join(gps, by = 'comp') %>% 
     dplyr::mutate(init_weight = 1/.data$value,
                   group = purrr::map2(.data$group, .data$comp, 
@@ -458,26 +458,58 @@ g3_lik_out <- function(model, param){
     adfun <- gadget3::g3_tmb_adfun(model, param, type = 'Fun')
     res <- adfun$report(adfun$par)
   }
-  
-  lik.out <- 
-    res[grep('dist_.+_obs__(wgt$|num$)', names(res), value = TRUE)] %>% 
+
+  lik.out.dist <-
+    ## Degrees of freedom: catch and abundance distributions
+    res[grep('^(a|c)dist_.+_obs__(wgt$|num$)', names(res), value = TRUE)] %>% 
     purrr::map(~sum(.>0)) %>% 
     purrr::map(~tibble::tibble(df = .)) %>% 
     dplyr::bind_rows(.id = 'comp') %>% 
     dplyr::mutate(comp = gsub('_obs__(wgt$|num$)', '', .data$comp)) %>% 
     dplyr::left_join(
+      ## Value: catch and abundance distributions
       res[grep('nll_.dist_.+__(wgt$|num$)', names(res), value = TRUE)] %>% 
         purrr::map(sum) %>% 
         purrr::map(~tibble::tibble(value = .)) %>% 
         dplyr::bind_rows(.id = 'comp') %>% 
-        dplyr::mutate(comp = gsub('nll_(.+)__(wgt$|num$)', '\\1', .data$comp)),
-      by = 'comp') %>%
+        dplyr::mutate(comp = gsub('nll_(.+)__(wgt$|num$)', '\\1', .data$comp)) 
+      ,by = 'comp') %>%
     dplyr::left_join(param %>% 
                        dplyr::select(comp = .data$switch, weight = .data$value) %>% 
                        dplyr::mutate(comp = gsub('_weight', '', .data$comp),
                                      weight = unlist(.data$weight)),
                      by = 'comp')
   
+  ## Sparse data
+  if (any(grepl('asparse', names(res)))){
+    
+    ## SHOULD USE OBS_N IF IT EXISTS, NEED TO ADD
+    
+    lik.out.sparse <- 
+      ## Degrees of freedom: sparse data
+      res[grep('^nll_asparse_.+__obs_mean$', names(res), value = TRUE)]  %>% 
+      purrr::map(length) %>% 
+      purrr::map(~tibble::tibble(df = .)) %>% 
+      dplyr::bind_rows(.id = 'comp') %>% 
+      dplyr::mutate(comp = gsub('nll_(.+)__obs_mean$', '\\1', .data$comp)) %>%  
+      left_join(
+        ## Value: sparse data
+        bind_rows(
+          res[grep('^nll_asparse_.+__nll$', names(res), value = TRUE)]  %>% 
+            purrr::map('nll') %>% 
+            purrr::map(~tibble::tibble(value = .)) %>% 
+            dplyr::bind_rows(.id = 'comp') %>% 
+            dplyr::mutate(comp = gsub('nll_(.+)__nll$', '\\1', .data$comp))
+        )
+      ,by = 'comp') %>%
+      dplyr::left_join(param %>% 
+                         dplyr::select(comp = .data$switch, weight = .data$value) %>% 
+                         dplyr::mutate(comp = gsub('_weight', '', .data$comp),
+                                       weight = unlist(.data$weight)),
+                       by = 'comp')  
+  }else lik.out.sparse <- NULL
+  
+  lik.out <- bind_rows(lik.out.dist, lik.out.sparse)
   attr(lik.out, 'param') <- param
   #attr(lik.out, 'actions') <- attr(model,'actions')
   #attr(lik.out, 'model_out') <- out
@@ -548,7 +580,7 @@ tabulate_SS <- function(lik_out, grouping){
   SS <- 
     lik_out %>% 
     dplyr::bind_rows(.id = 'group') %>% 
-    dplyr::mutate(comp = gsub('(cdist|adist)_(surveyindices_log|[a-z]+)_(.+)', '\\3', .data$comp)) %>% 
+    dplyr::mutate(comp = gsub('(asparse|csparse|cdist|adist)_(surveyindices_log|[a-z]+)_(.+)', '\\3', .data$comp)) %>% 
     dplyr::select(.data$group, .data$comp, .data$value) %>% 
     tidyr::pivot_wider(names_from = .data$comp, values_from = .data$value, names_sort = TRUE) %>% 
     dplyr::left_join(group_list %>% 
