@@ -31,7 +31,7 @@ g3_fit <- function(model,
           params$report_detail <- 1L
           model_output <- model(params)
           tmp <- attributes(model_output)
-          data_env <- environment(model)$data
+          data_env <- environment(model)
       } else {
           tmp <- NULL
       }
@@ -201,9 +201,9 @@ g3_fit <- function(model,
     sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(area$|age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n)'
     sp_re <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(model_sum$|model_sqsum$|model_n$)'
     sp_re_all <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n$|model_sum$|model_sqsum$|model_n$)'
-    
+  
     sparsedist <- 
-      data_env[grep(sp_re_obs, names(data_env))] %>%
+      mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env) %>%
       purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
       dplyr::bind_rows(.id = 'comp') %>%
         dplyr::bind_rows(
