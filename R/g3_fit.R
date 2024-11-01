@@ -31,13 +31,16 @@ g3_fit <- function(model,
           params$report_detail <- 1L
           model_output <- model(params)
           tmp <- attributes(model_output)
+          data_env <- environment(model)$data
       } else {
           tmp <- NULL
       }
   } else if (inherits(model, "g3_cpp")) {
       if (is.data.frame(params) && "report_detail" %in% params$switch && printatstart == 1) {
           params['report_detail', 'value'] <- 1L
-          tmp <- gadget3::g3_tmb_adfun(model, params)$report(gadget3::g3_tmb_par(params))
+          obj_fun <- gadget3::g3_tmb_adfun(model, params, type = 'Fun')
+          tmp <- obj_fun$report(gadget3::g3_tmb_par(params))
+          data_env <- obj_fun$env$data
       } else {
           tmp <- NULL
       }
@@ -184,6 +187,50 @@ g3_fit <- function(model,
   }
   
   ## -------------------------------------------------------------------------
+  
+  ## Sparse distributions
+  if (any(grepl('^nll_(a|c)sparse_', names(tmp)))){
+    
+    sp_df <- tibble(year = NA_real_, step = NA_real_, area = NA_character_,
+                    age = NA_integer_, length = NA_real_, obs_mean = NA_real_,
+                    obs_stddev = NA_real_, obs_n = NA_real_,
+                    model_sum = NA_real_, model_sqsum = NA_real_,
+                    model_n = NA_real_)
+    
+    ## Observed and model search strings
+    sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(area$|age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n)'
+    sp_re <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(model_sum$|model_sqsum$|model_n$)'
+    sp_re_all <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n$|model_sum$|model_sqsum$|model_n$)'
+    
+    sparsedist <- 
+      data_env[grep(sp_re_obs, names(data_env))] %>%
+      purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
+      dplyr::bind_rows(.id = 'comp') %>%
+        dplyr::bind_rows(
+          tmp[grep(sp_re, names(tmp))] %>% 
+            purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
+            dplyr::bind_rows(.id = 'comp')
+        ) %>% 
+        dplyr::mutate(data_type = gsub(sp_re_all, '\\1', .data$comp),
+                      function_f = gsub(sp_re_all, '\\2', .data$comp),
+                      component =  gsub(sp_re_all, '\\3', .data$comp),
+                      column = gsub(sp_re_all, '\\4', .data$comp),
+                      component = gsub('__', '.', .data$component)) %>% 
+        dplyr::select(-.data$comp) %>% 
+        dplyr::group_by(column) %>% 
+        dplyr::mutate(row = dplyr::row_number()) %>% 
+        tidyr::pivot_wider(names_from = .data$column, values_from = .data$value) %>% 
+        dplyr::select(-row) %>% 
+        dplyr::bind_rows(sp_df) %>% 
+        dplyr::select(year, step, area, data_type, function_f, component,
+                      age, length, obs_mean, obs_stddev, obs_n, model_sum, model_sqsum, model_n)
+    
+    
+    
+  }else{
+    sparsedist <- NULL
+  }
+  
   
   ## Survey or other indices 
   if (any(grepl('^.+_surveyindices_.+__num$|^.+_surveyindices_.+__wgt$', names(tmp)))){
@@ -588,6 +635,7 @@ g3_fit <- function(model,
     sidat = sidat,
     stockdist = stockdist,
     catchdist.fleets = catchdist.fleets,
+    sparsedist = sparsedist,
     suitability = predator.prey %>% 
       dplyr::select(.data$year,.data$step,area=.data$area, stock=.data$prey,
                     fleet=.data$predator,.data$length,.data$suit) %>% 
