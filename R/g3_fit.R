@@ -286,15 +286,36 @@ g3_fit <- function(model,
   if (any(grepl('^nll_', names(tmp)))){
     
     likelihood <-
-      tmp[grep('^nll_', names(tmp))] %>%
+      ## Catch and abundance distributions
+      tmp[grep('^nll_(a|c)dist', names(tmp))] %>%
       purrr::map(~tibble::tibble(time=names(.), lik_score = as.numeric(.))) %>% 
       dplyr::bind_rows(.id='lik_comp') %>% 
-      dplyr::filter(!grepl('understocking', .data$lik_comp)) %>%
       dplyr::mutate(type = gsub('.+(wgt|num|weight)','\\1', .data$lik_comp),
                     component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\3', .data$lik_comp),
                     data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>%
       dplyr::select(-.data$lik_comp) %>%
       tidyr::pivot_wider(names_from = .data$type, values_from = .data$lik_score) %>%
+      ## Understocking
+      dplyr::bind_rows(
+        tmp[grep('^nll_understocking', names(tmp))] %>%
+          purrr::map(~tibble::tibble(time=names(.), lik_score = as.numeric(.))) %>% 
+          dplyr::bind_rows(.id='lik_comp') %>% 
+          dplyr::mutate(component = 'understocking',
+                        data_type = NA_character_,
+                        num = NA_real_) %>% 
+          dplyr::select(-lik_comp, wgt = lik_score)
+      ) %>% 
+      ## Sparse data
+      dplyr::bind_rows(
+        tmp[grep('^nll_(a|c)sparse_(.+)__nll', names(tmp))] %>% 
+          purrr::map(~tibble::tibble(type=names(.), lik_score = as.numeric(.))) %>% 
+          dplyr::bind_rows(.id='lik_comp') %>%
+          filter(type == 'nll') %>%
+          dplyr::rename(nll = .data$lik_score) %>% 
+          dplyr::mutate(component = gsub('nll_(c|a)sparse_([A-Za-z]+)_(.+)__nll$', '\\3', .data$lik_comp),
+                        data_type = gsub('nll_(csparse|asparse)_([A-Za-z]+)_(.+)__nll$', '\\1_\\2', .data$lik_comp)) %>% 
+          dplyr::select(-.data$lik_comp, -.data$type)
+      ) %>%
       extract_year_step()  
     
   }else{
