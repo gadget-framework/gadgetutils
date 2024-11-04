@@ -214,14 +214,15 @@ g3_fit <- function(model,
         dplyr::mutate(data_type = gsub(sp_re_all, '\\1', .data$comp),
                       function_f = gsub(sp_re_all, '\\2', .data$comp),
                       component =  gsub(sp_re_all, '\\3', .data$comp),
-                      column = gsub(sp_re_all, '\\4', .data$comp),
-                      component = gsub('__', '.', .data$component)) %>% 
+                      column = gsub(sp_re_all, '\\4', .data$comp)) %>% 
+                      #component = gsub('__', '.', .data$component)) %>% 
         dplyr::select(-.data$comp) %>% 
         dplyr::group_by(column) %>% 
         dplyr::mutate(row = dplyr::row_number()) %>% 
         tidyr::pivot_wider(names_from = .data$column, values_from = .data$value) %>% 
         dplyr::select(-row) %>% 
         dplyr::bind_rows(sp_df) %>% 
+        tidyr::drop_na(component) %>% 
         dplyr::select(year, step, area, data_type, function_f, component,
                       age, length, obs_mean, obs_stddev, obs_n, model_sum, model_sqsum, model_n)
     
@@ -351,19 +352,23 @@ g3_fit <- function(model,
                         data_type = NA_character_,
                         num = NA_real_) %>% 
           dplyr::select(-lik_comp, wgt = lik_score)
-      ) %>% 
-      ## Sparse data
-      dplyr::bind_rows(
+      ) 
+    
+    ## Sparse data
+    if (any(grepl('^nll_(a|c)sparse_(.+)__nll', names(tmp)))){
+      lik_tmp <- 
         tmp[grep('^nll_(a|c)sparse_(.+)__nll', names(tmp))] %>% 
-          purrr::map(~tibble::tibble(type=names(.), lik_score = as.numeric(.))) %>% 
-          dplyr::bind_rows(.id='lik_comp') %>%
-          filter(type == 'nll') %>%
-          dplyr::rename(nll = .data$lik_score) %>% 
-          dplyr::mutate(component = gsub('nll_(c|a)sparse_([A-Za-z]+)_(.+)__nll$', '\\3', .data$lik_comp),
-                        data_type = gsub('nll_(csparse|asparse)_([A-Za-z]+)_(.+)__nll$', '\\1_\\2', .data$lik_comp)) %>% 
-          dplyr::select(-.data$lik_comp, -.data$type)
-      ) %>%
-      extract_year_step()  
+        purrr::map(~tibble::tibble(type=names(.), lik_score = as.numeric(.))) %>% 
+        dplyr::bind_rows(.id='lik_comp') %>%
+        dplyr::filter(type == 'nll') %>%
+        dplyr::rename(nll = .data$lik_score) %>% 
+        dplyr::mutate(component = gsub('nll_(c|a)sparse_([A-Za-z]+)_(.+)__nll$', '\\3', .data$lik_comp),
+                      data_type = gsub('nll_(csparse|asparse)_([A-Za-z]+)_(.+)__nll$', '\\1_\\2', .data$lik_comp)) %>% 
+        dplyr::select(-.data$lik_comp, -.data$type)
+    }else{
+      lik_tmp <- NULL
+    }
+    likelihood <- likelihood %>% dplyr::bind_rows(lik_tmp) %>% extract_year_step()
     
   }else{
     likelihood <- NULL
