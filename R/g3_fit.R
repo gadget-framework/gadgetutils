@@ -92,8 +92,19 @@ g3_fit <- function(model,
   }
   step_size <- 1/length(step_lengths)
 
+  # Work out abundance naming
+  if(any(grepl("^dinit_(.+)__wgt$", names(tmp)))) {
+     # New style name
+     abundnum_re <- "^dinit_(.+)__num$"
+     abundwgt_re <- "^dinit_(.+)__wgt$"
+  } else {
+     # Old style name
+     abundnum_re <- "^detail_(.+)__num$"
+     abundwgt_re <- "^detail_(.+)__wgt$"
+  }
+
   # Extract names of everything with an abundance record
-  stock_names <- regmatches(names(tmp), regexec("^detail_(.+)__num$", names(tmp)))
+  stock_names <- regmatches(names(tmp), regexec(abundnum_re, names(tmp)))
   # Pick out the capture group, throw away everything else
   stock_names <- vapply(stock_names, function (x) {
       if (length(x) == 2) x[[2]] else as.character(NA)
@@ -405,10 +416,10 @@ g3_fit <- function(model,
   
   ## Stock reports
   weight_reports <- 
-    tmp[grepl('detail_(.+)__wgt', names(tmp))] %>% 
+    tmp[grepl(abundwgt_re, names(tmp))] %>% 
     purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'weight') %>% 
     dplyr::bind_rows(.id='comp') %>% 
-    dplyr::mutate(stock = gsub('detail_(.+)__wgt', '\\1', .data$comp)) %>% 
+    dplyr::mutate(stock = gsub(abundwgt_re, '\\1', .data$comp)) %>% 
     dplyr::select(-.data$comp) 
   
   if (any(grepl("__cons$", names(tmp)))) {
@@ -447,10 +458,10 @@ g3_fit <- function(model,
   
   ## Abundance
   num_reports <- 
-    tmp[grepl('detail_(.+)__num', names(tmp))] %>% 
+    tmp[grepl(abundnum_re, names(tmp))] %>% 
     purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'abundance') %>% 
     dplyr::bind_rows(.id='comp') %>% 
-    dplyr::mutate(stock = gsub('detail_(.+)__num', '\\1', .data$comp)) %>% 
+    dplyr::mutate(stock = gsub(abundnum_re, '\\1', .data$comp)) %>% 
     dplyr::select(-.data$comp) %>% 
     dplyr::left_join(weight_reports, by = c("time", "area", "stock", "age", "length")) %>% 
     split_length() %>%
