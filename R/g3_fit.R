@@ -202,11 +202,11 @@ g3_fit <- function(model,
   ## Sparse distributions
   if (any(grepl('^nll_(a|c)sparse_', names(tmp)))){
     
-    sp_df <- tibble(year = NA_real_, step = NA_real_, area = NA_character_,
-                    age = NA_integer_, length = NA_real_, obs_mean = NA_real_,
-                    obs_stddev = NA_real_, obs_n = NA_real_,
-                    model_sum = NA_real_, model_sqsum = NA_real_,
-                    model_n = NA_real_)
+    sp_df <- tibble::tibble(year = NA_real_, step = NA_real_, area = NA_character_,
+                            age = NA_integer_, length = NA_real_, obs_mean = NA_real_,
+                            obs_stddev = NA_real_, obs_n = NA_real_,
+                            model_sum = NA_real_, model_sqsum = NA_real_, 
+                            model_mean = NA_real_, model_n = NA_real_)
     
     ## Observed and model search strings
     sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(area$|age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n)'
@@ -233,9 +233,12 @@ g3_fit <- function(model,
         tidyr::pivot_wider(names_from = .data$column, values_from = .data$value) %>% 
         dplyr::select(-row) %>% 
         dplyr::bind_rows(sp_df) %>% 
+        dplyr::mutate(model_mean = .data$model_sum / .data$model_n) %>% 
         tidyr::drop_na(component) %>% 
-        dplyr::select(year, step, area, data_type, function_f, component,
-                      age, length, obs_mean, obs_stddev, obs_n, model_sum, model_sqsum, model_n)
+        dplyr::select(.data$year, .data$step, .data$area, .data$data_type, 
+                      .data$function_f, .data$component, .data$age, .data$length, 
+                      .data$obs_mean, .data$obs_stddev, .data$obs_n, 
+                      .data$model_sum, .data$model_mean, .data$model_sqsum, .data$model_n)
     
     
     
@@ -362,7 +365,7 @@ g3_fit <- function(model,
           dplyr::mutate(component = 'understocking',
                         data_type = NA_character_,
                         num = NA_real_) %>% 
-          dplyr::select(-lik_comp, wgt = lik_score)
+          dplyr::select(-.data$lik_comp, wgt = .data$lik_score)
       ) 
     
     ## Sparse data
