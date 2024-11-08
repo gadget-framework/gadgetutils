@@ -492,9 +492,9 @@ g3_lik_out <- function(model, param){
       purrr::map(~tibble::tibble(df = .)) %>% 
       dplyr::bind_rows(.id = 'comp') %>% 
       dplyr::mutate(comp = gsub('nll_(.+)__obs_mean$', '\\1', .data$comp)) %>%  
-      left_join(
+      dplyr::left_join(
         ## Value: sparse data
-        bind_rows(
+        dplyr::bind_rows(
           res[grep('^nll_asparse_.+__nll$', names(res), value = TRUE)]  %>% 
             purrr::map('nll') %>% 
             purrr::map(~tibble::tibble(value = .)) %>% 
@@ -509,7 +509,7 @@ g3_lik_out <- function(model, param){
                        by = 'comp')  
   }else lik.out.sparse <- NULL
   
-  lik.out <- bind_rows(lik.out.dist, lik.out.sparse)
+  lik.out <- dplyr::bind_rows(lik.out.dist, lik.out.sparse)
   attr(lik.out, 'param') <- param
   #attr(lik.out, 'actions') <- attr(model,'actions')
   #attr(lik.out, 'model_out') <- out

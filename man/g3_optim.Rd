@@ -11,7 +11,8 @@ g3_optim(
   method = "BFGS",
   control = list(),
   print_status = FALSE,
-  print_id = "",
+  print_id = "g3_optim",
+  check_finite = TRUE,
   ...
 )
 }
@@ -29,6 +30,8 @@ g3_optim(
 \item{print_status}{Print step comments, does not suppress comments from optim call (see control$trace)}
 
 \item{print_id}{A character string appended to the print statements (useful for when running g3_optim in parallel)}
+
+\item{check_finite}{boolean Should we check that initial/final conditions produce finite results before running?}
 
 \item{...}{Further arguments to be passed gadget3::g3_tmb_adfun, see \code{\link[gadget3]{g3_tmb_adfun}}}
 }

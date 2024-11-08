@@ -71,7 +71,7 @@ g3_optim <- function(model,
       # Put FALSE/TRUE back into parameter list (to get the pre-cpp names), extract names of TRUE values
       par_names <- names(Filter(
           function(y) identical(y, TRUE),
-          g3_tmb_relist(params, is.na(x)) ))
+          gadget3::g3_tmb_relist(params, is.na(x)) ))
       stop('Error NAs detected in parscale', print_id, ": ", paste(par_names, collapse = ", "))
     }
   }
@@ -91,7 +91,7 @@ g3_optim <- function(model,
         # Put FALSE/TRUE back into parameter list (to get the pre-cpp names), extract names of TRUE values
         par_names <- names(Filter(
             function(y) identical(y, TRUE),
-            g3_tmb_relist(params, !is.finite(x)) ))
+            gadget3::g3_tmb_relist(params, !is.finite(x)) ))
         warning("Initial conditions", print_id, " produce a non-finite gradient in: ", paste(par_names, collapse = ", "))
       }
     }
@@ -142,7 +142,7 @@ g3_optim <- function(model,
           # Put FALSE/TRUE back into parameter list (to get the pre-cpp names), extract names of TRUE values
           par_names <- names(Filter(
               function(y) identical(y, TRUE),
-              g3_tmb_relist(params, !is.finite(x)) ))
+              gadget3::g3_tmb_relist(params, !is.finite(x)) ))
           warning("Optimised parameters", print_id, " produce a non-finite gradient in: ", paste(par_names, collapse = ", "))
         }
       }

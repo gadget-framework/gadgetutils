@@ -182,7 +182,7 @@ g3_fit <- function(model,
                       residuals = ifelse(.data$observed == 0, NA, .data$observed - .data$predicted)) %>% 
         dplyr::ungroup() %>%
         split_age() %>%
-        dplyr::group_by(name) %>% 
+        dplyr::group_by(.data$name) %>% 
         dplyr::mutate(age = dplyr::case_when(length(unique(age)) == 1 ~ paste0('all', lower_age),
                                    TRUE ~ paste0('age', lower_age))) %>% 
         dplyr::ungroup() %>% 
@@ -228,13 +228,13 @@ g3_fit <- function(model,
                       column = gsub(sp_re_all, '\\4', .data$comp)) %>% 
                       #component = gsub('__', '.', .data$component)) %>% 
         dplyr::select(-.data$comp) %>% 
-        dplyr::group_by(column) %>% 
+        dplyr::group_by(.data$column) %>% 
         dplyr::mutate(row = dplyr::row_number()) %>% 
         tidyr::pivot_wider(names_from = .data$column, values_from = .data$value) %>% 
         dplyr::select(-row) %>% 
         dplyr::bind_rows(sp_df) %>% 
         dplyr::mutate(model_mean = .data$model_sum / .data$model_n) %>% 
-        tidyr::drop_na(component) %>% 
+        tidyr::drop_na(.data$component) %>% 
         dplyr::select(.data$year, .data$step, .data$area, .data$data_type, 
                       .data$function_f, .data$component, .data$age, .data$length, 
                       .data$obs_mean, .data$obs_stddev, .data$obs_n, 
@@ -374,7 +374,7 @@ g3_fit <- function(model,
         tmp[grep('^nll_(a|c)sparse_(.+)__nll', names(tmp))] %>% 
         purrr::map(~tibble::tibble(type=names(.), lik_score = as.numeric(.))) %>% 
         dplyr::bind_rows(.id='lik_comp') %>%
-        dplyr::filter(type == 'nll') %>%
+        dplyr::filter(.data$type == 'nll') %>%
         dplyr::rename(nll = .data$lik_score) %>% 
         dplyr::mutate(component = gsub('nll_(c|a)sparse_([A-Za-z]+)_(.+)__nll$', '\\3', .data$lik_comp),
                       data_type = gsub('nll_(csparse|asparse)_([A-Za-z]+)_(.+)__nll$', '\\1_\\2', .data$lik_comp)) %>% 
@@ -513,7 +513,8 @@ g3_fit <- function(model,
   predator.prey <- 
     fleet_reports %>%
     dplyr::left_join(suitability) %>%
-    dplyr::left_join(num_reports %>% dplyr::select(-c(upper,lower,avg.length)) %>% dplyr::rename(bioweight = weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
+    dplyr::left_join(num_reports %>% dplyr::select(-c(.data$upper,.data$lower,.data$avg.length)) %>% 
+                       dplyr::rename(bioweight = .data$weight), by = c('year', 'step', 'stock', 'area', 'age', 'length')) %>% 
     dplyr::mutate(suit = dplyr::case_when(number_consumed == 0 ~ 0, .default = .data$suit)) %>% 
     dplyr::mutate(length = .data$avg.length,
                   harv.bio = .data$abundance * .data$bioweight * .data$suit) %>% 
@@ -525,7 +526,7 @@ g3_fit <- function(model,
     dplyr::mutate(mortality = -log(1 - .data$number_consumed / .data$number)/step_size) %>% 
     tidyr::replace_na(list(mortality = 0)) %>% 
     dplyr::ungroup() %>% 
-    dplyr::mutate(tb = number * mean_weight) %>% 
+    dplyr::mutate(tb = .data$number * .data$mean_weight) %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$fleet) %>%
     dplyr::mutate(suit = .data$harv.bio / .data$tb,
                   suit = ifelse(is.finite(.data$suit), .data$suit, 0)) %>%

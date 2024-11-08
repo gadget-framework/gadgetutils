@@ -18,7 +18,7 @@ run_g3_optim(
 \arguments{
 \item{model}{Either a g3 model of class 'g3_cpp', i.e., model <- gadget3::g3_to_tmb(actions), or an objective function from gadget3::g3_tmb_adfun(model, param)}
 
-\item{params}{The parameter template for a g3_cpp classed model.}
+\item{params}{A list of parameter templates for a g3_cpp classed model.}
 
 \item{use_parscale}{Should parscale be used g3_tmb_parscale(params), see \code{\link[stats]{optim}}}
 
