@@ -93,10 +93,10 @@ g3_fit <- function(model,
   step_size <- 1/length(step_lengths)
 
   # Work out abundance naming
-  if(any(grepl("^dinit_(.+)__wgt$", names(tmp)))) {
+  if(any(grepl("^dstart_(.+)__wgt$", names(tmp)))) {
      # New style name
-     abundnum_re <- "^dinit_(.+)__num$"
-     abundwgt_re <- "^dinit_(.+)__wgt$"
+     abundnum_re <- "^dstart_(.+)__num$"
+     abundwgt_re <- "^dstart_(.+)__wgt$"
   } else {
      # Old style name
      abundnum_re <- "^detail_(.+)__num$"
