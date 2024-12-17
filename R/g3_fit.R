@@ -24,9 +24,6 @@ g3_fit <- function(model,
   out_params <- params
   
   if (inherits(model, "g3_r")) {
-      if (inherits(params, 'data.frame')){
-        params <- params$value
-      }
       if ("report_detail" %in% names(params) && printatstart == 1) {
           params$report_detail <- 1L
           model_output <- model(params)
