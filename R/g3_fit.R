@@ -24,9 +24,6 @@ g3_fit <- function(model,
   out_params <- params
   
   if (inherits(model, "g3_r")) {
-      if (inherits(params, 'data.frame')){
-        params <- params$value
-      }
       if ("report_detail" %in% names(params) && printatstart == 1) {
           params$report_detail <- 1L
           model_output <- model(params)
@@ -40,7 +37,7 @@ g3_fit <- function(model,
           params['report_detail', 'value'] <- 1L
           obj_fun <- gadget3::g3_tmb_adfun(model, params, type = 'Fun')
           tmp <- obj_fun$report(gadget3::g3_tmb_par(params))
-          data_env <- obj_fun$env$data
+          data_env <- as.environment(obj_fun$env$data)
       } else {
           tmp <- NULL
       }

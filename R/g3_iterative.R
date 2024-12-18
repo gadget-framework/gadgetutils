@@ -496,7 +496,9 @@ g3_lik_out <- function(model, param){
         ## Value: sparse data
         dplyr::bind_rows(
           res[grep('^nll_asparse_.+__nll$', names(res), value = TRUE)]  %>% 
-            purrr::map('nll') %>% 
+            # nll_asparse_sumsquares_x__nll is a vector of years, and should be summed to get the nll
+            # nll_asparse_linreg_x__nll is a vector of c("nll", "intercept", "slope")
+            lapply(function (x) if ("nll" %in% names(x)) x[["nll"]] else sum(x)) %>%
             purrr::map(~tibble::tibble(value = .)) %>% 
             dplyr::bind_rows(.id = 'comp') %>% 
             dplyr::mutate(comp = gsub('nll_(.+)__nll$', '\\1', .data$comp))
