@@ -37,7 +37,7 @@ g3_fit <- function(model,
           params['report_detail', 'value'] <- 1L
           obj_fun <- gadget3::g3_tmb_adfun(model, params, type = 'Fun')
           tmp <- obj_fun$report(gadget3::g3_tmb_par(params))
-          data_env <- as.environment(obj_fun$env$data)
+          data_env <- as.environment(attr(model, 'model_data'))
       } else {
           tmp <- NULL
       }
