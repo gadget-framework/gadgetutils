@@ -301,6 +301,9 @@ g3_fit <- function(model,
       dplyr::mutate(stock = gsub(suit_re, '\\1', .data$comp),
                     fleet = gsub(suit_re, '\\2', .data$comp)) %>%
       split_length() %>%
+      dplyr::group_by(.data$stock, .data$fleet) %>% 
+      dplyr::group_modify(~replace_inf(.x)) %>% 
+      dplyr::ungroup() %>%
       extract_year_step() %>%
       dplyr::rename(suit = "Freq") %>%
       dplyr::select(-c("comp")) %>%
@@ -318,6 +321,9 @@ g3_fit <- function(model,
                     #length = gsub('len','', .data$length) %>% as.numeric(),
                     #age = gsub('age','', .data$age) %>% as.numeric()) %>%
       split_length() %>%
+      dplyr::group_by(.data$stock, .data$fleet) %>% 
+      dplyr::group_modify(~replace_inf(.x)) %>% 
+      dplyr::ungroup() %>%
       extract_year_step() %>%
       dplyr::rename(suit = .data$Freq) %>%
       dplyr::select(.data$year, .data$step, .data$area, .data$stock,
