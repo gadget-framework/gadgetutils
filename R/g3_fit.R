@@ -214,30 +214,37 @@ g3_fit <- function(model,
       mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env) %>%
       purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
       dplyr::bind_rows(.id = 'comp') %>%
-        dplyr::bind_rows(
-          tmp[grep(sp_re, names(tmp))] %>% 
-            purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
-            dplyr::bind_rows(.id = 'comp')
-        ) %>% 
-        dplyr::mutate(data_type = gsub(sp_re_all, '\\1', .data$comp),
-                      function_f = gsub(sp_re_all, '\\2', .data$comp),
-                      component =  gsub(sp_re_all, '\\3', .data$comp),
-                      column = gsub(sp_re_all, '\\4', .data$comp)) %>% 
-                      #component = gsub('__', '.', .data$component)) %>% 
-        dplyr::select(-.data$comp) %>% 
-        dplyr::group_by(.data$column) %>% 
-        dplyr::mutate(row = dplyr::row_number()) %>% 
-        tidyr::pivot_wider(names_from = .data$column, values_from = .data$value) %>% 
-        dplyr::select(-row) %>% 
-        dplyr::bind_rows(sp_df) %>% 
-        dplyr::mutate(model_mean = .data$model_sum / .data$model_n) %>% 
-        tidyr::drop_na(.data$component) %>% 
-        dplyr::select(.data$year, .data$step, .data$area, .data$data_type, 
-                      .data$function_f, .data$component, .data$age, .data$length, 
-                      .data$obs_mean, .data$obs_stddev, .data$obs_n, 
-                      .data$model_sum, .data$model_mean, .data$model_sqsum, .data$model_n)
+      dplyr::bind_rows(
+        tmp[grep(sp_re, names(tmp))] %>% 
+          purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
+          dplyr::bind_rows(.id = 'comp')
+      ) %>% 
+      dplyr::mutate(data_type = gsub(sp_re_all, '\\1', .data$comp),
+                    function_f = gsub(sp_re_all, '\\2', .data$comp),
+                    component =  gsub(sp_re_all, '\\3', .data$comp),
+                    column = gsub(sp_re_all, '\\4', .data$comp)) %>% 
+      #component = gsub('__', '.', .data$component)) %>% 
+      dplyr::select(-.data$comp)
     
-    
+    sparsedist <- 
+      c(
+        split(sparsedist, sparsedist$component) %>% 
+          purrr::map(function(x){
+            x %>% 
+              dplyr::group_by(.data$column) %>% 
+              dplyr::mutate(row = dplyr::row_number()) %>% 
+              tidyr::pivot_wider(names_from = .data$column, values_from = .data$value, values_fill = NA) %>% 
+              dplyr::ungroup() %>% 
+              dplyr::select(-row)
+          }),
+        list(sp_df)) %>% 
+      dplyr::bind_rows() %>% 
+      dplyr::mutate(model_mean = .data$model_sum / .data$model_n) %>% 
+      tidyr::drop_na(.data$component) %>% 
+      dplyr::select(.data$year, .data$step, .data$area, .data$data_type, 
+                    .data$function_f, .data$component, .data$age, .data$length, 
+                    .data$obs_mean, .data$obs_stddev, .data$obs_n, 
+                    .data$model_sum, .data$model_mean, .data$model_sqsum, .data$model_n)
     
   }else{
     sparsedist <- NULL
