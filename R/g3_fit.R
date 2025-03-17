@@ -154,6 +154,7 @@ g3_fit <- function(model,
     ## Add stock and stock_re columns if they dont exist
     if (!('stock' %in% names(dat))) dat$stock <- NA
     if (!('stock_re' %in% names(dat))) dat$stock_re <- NA
+    if (!('predator_length' %in% names(dat))) dat$predator_length <- NA
   
     ## Maturity
     ## TO-DO ADD LOWER AND UPPER
@@ -163,12 +164,13 @@ g3_fit <- function(model,
     }else{
       stockdist <- 
         dat[!nastock_index,] %>% 
-        dplyr::group_by(.data$year, .data$step, .data$area, .data$length, .data$age, .data$name) %>%
+        dplyr::group_by(.data$year, .data$step, .data$area, .data$predator_length, 
+                        .data$length, .data$age, .data$name) %>%
         dplyr::mutate(pred.ratio = .data$predicted / sum(.data$predicted, na.rm = TRUE),
                       obs.ratio = .data$observed / sum(.data$observed, na.rm = TRUE),
                       length = .data$avg.length) %>%
         dplyr::ungroup() %>% 
-        dplyr::select(.data$name, .data$year, .data$step, .data$area, 
+        dplyr::select(.data$name, .data$year, .data$step, .data$area, .data$predator_length, 
                       dplyr::matches("stock|stock_re"), .data$lower, .data$upper, .data$length, .data$age, 
                       .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
     }
