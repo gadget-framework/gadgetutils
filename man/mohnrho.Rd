@@ -4,7 +4,13 @@
 \alias{mohnrho}
 \title{Generate parameterised g3a_initial_abund}
 \usage{
-mohnrho(fit, retrofit, vars = c("total.biomass", "F", "recruitment"))
+mohnrho(
+  fit,
+  retrofit,
+  vars = c("total.biomass", "F", "recruitment"),
+  lag = c(0, 1, 1),
+  aggregate_biomass = TRUE
+)
 }
 \arguments{
 \item{fit}{A g3_fit object}
@@ -12,6 +18,10 @@ mohnrho(fit, retrofit, vars = c("total.biomass", "F", "recruitment"))
 \item{retrofit}{A list of g3_fit objects that differ in their terminal year, i.e. the result of a retrospective analysis}
 
 \item{vars}{Which variables would you like to calculate Mohn's Rho for? They must be columns in fit$res.by.year}
+
+\item{lag}{vector of lags for each variable in terms of years}
+
+\item{aggregate_biomass}{calculate rho for biomass over stocks? Only works if 'total.biomass' is in vars}
 }
 \value{
 A data.frame with mohn's rho for each variable by stock
