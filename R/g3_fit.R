@@ -124,19 +124,19 @@ g3_fit <- function(model,
   ## --------------------------------------------------------------
   ## Catch distributions
   ## --------------------------------------------------------------
-  if (any(grepl('^cdist_.+__num$', names(tmp)))){
+  if (any(grepl('^cdist_.+__(num|wgt)$', names(tmp)))){
   
     ## To-do: add in age and length attributes from stock objects
     ## Merge together catch distribution observations and predictions
     dat <- 
-      tmp[grep('^cdist_.+__num$', names(tmp))] %>%
+      tmp[grep('^cdist_.+__(num|wgt)$', names(tmp))] %>%
       purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
       dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(data_function = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\2', .data$comp),
-                    #type = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\3', .data$comp),
-                    #fleetnames = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\4', .data$comp),
-                    origin = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\4', .data$comp),
-                    name = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__num', '\\3', .data$comp),
+      dplyr::mutate(data_function = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2', .data$comp),
+                    #type = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
+                    #fleetnames = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
+                    origin = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
+                    name = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
                     #length = gsub('len', '', .data$length) %>% as.numeric(),
                     area = tryCatch(as.numeric(as.factor(.data$area)),
                                     error = function(z) 1)) %>%
