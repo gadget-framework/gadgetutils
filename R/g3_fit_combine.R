@@ -23,3 +23,18 @@ bind_fit_components <- function(fit_list, component){
   return(out)
   
 }
+
+#' this is a possible generalisation to bind all the elements of multiple gadget.fit objects
+bind_fit <- function(fit_list, ...){
+  # initialise an empty list
+  out <- fit_list[[1]]
+  out[] <- NA
+  for(i in 1:length(out)){
+    if(sum(class(fit_list[[1]][[names(out)[i]]]) == "data.frame") == 1){
+      tmp <- sapply(fit_list,function(x){x[names(out)[i]]})
+      names(tmp) <- names(fit_list) # replace with readable model names
+      out[[i]] <- bind_rows(tmp, .id="id")
+    } else { NULL }}
+
+  return(out)
+}
