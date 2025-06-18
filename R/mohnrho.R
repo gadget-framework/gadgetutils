@@ -28,8 +28,8 @@ mohnrho <- function(fit, retrofit,
                         tmp |> 
                         dplyr::bind_rows(
                           tmp |> 
-                            dplyr::group_by(year) |> 
-                            dplyr::summarise(total.biomass = sum(total.biomass)) |> 
+                            dplyr::group_by(.data$year) |> 
+                            dplyr::summarise(total.biomass = sum(.data$total.biomass)) |> 
                             dplyr::mutate(stock = 'All')
                         )
                     }
@@ -39,9 +39,9 @@ mohnrho <- function(fit, retrofit,
                         dplyr::mutate(peel = final_year - max(.data$year)) |> 
                         tidyr::pivot_longer(cols = vars) |> 
                         dplyr::right_join(lag_df, by = c('name')) |> 
-                        dplyr::group_by(stock, peel, name) |> 
-                        dplyr::filter(year == max(year)-lag) |> 
-                        dplyr::select(-lag)
+                        dplyr::group_by(.data$stock, .data$peel, .data$name) |> 
+                        dplyr::filter(.data$year == max(.data$year)-.data$lag) |> 
+                        dplyr::select(-.data$lag)
                     )
                     
                   }, final_year = final_year, lag_df = lag_df))
@@ -52,8 +52,8 @@ mohnrho <- function(fit, retrofit,
       fitd |> 
       dplyr::bind_rows(
         fitd |> 
-          dplyr::group_by(year) |> 
-          dplyr::summarise(total.biomass = sum(total.biomass)) |> 
+          dplyr::group_by(.data$year) |> 
+          dplyr::summarise(total.biomass = sum(.data$total.biomass)) |> 
           dplyr::mutate(stock = 'All')
       )
   }
@@ -65,10 +65,10 @@ mohnrho <- function(fit, retrofit,
   
   out <- 
     fitd |> 
-    dplyr::mutate(bias = (value - value0)/value0) |> 
-    dplyr::group_by(stock, name) |> 
-    dplyr::summarise(rho = mean(bias)) |> 
-    tidyr::pivot_wider(names_from = name, values_from = rho)
+    dplyr::mutate(bias = (.data$value - .data$value0)/.data$value0) |> 
+    dplyr::group_by(.data$stock, .data$name) |> 
+    dplyr::summarise(rho = mean(.data$bias)) |> 
+    tidyr::pivot_wider(names_from = .data$name, values_from = .data$rho)
   
   return(out)
   

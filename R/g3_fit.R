@@ -219,9 +219,11 @@ g3_fit <- function(model,
     
     ## Observed and model search strings
     sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(area$|age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n)'
-    sp_re <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(model_sum$|model_sqsum$|model_n$)'
-    sp_re_all <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n$|model_sum$|model_sqsum$|model_n$)'
-  
+    sp_re <-     'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(model_sum$|model_sqsum$|model_n$|nll$)'
+    sp_re_all <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n$|model_sum$|model_sqsum$|model_n$|nll$)'
+    
+    sparse_nll_names <- names(mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env))
+    
     sparsedist <- 
       mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env) %>%
       purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
@@ -236,7 +238,17 @@ g3_fit <- function(model,
                     component =  gsub(sp_re_all, '\\3', .data$comp),
                     column = gsub(sp_re_all, '\\4', .data$comp)) %>% 
       #component = gsub('__', '.', .data$component)) %>% 
-      dplyr::select(-.data$comp)
+      dplyr::select(-.data$comp) %>% 
+      ## Take weights from parameters
+      dplyr::full_join(
+        params$value[unique(gsub('__(.+)$', '_weight', gsub('^nll_', '', sparse_nll_names)))] %>% 
+          purrr::map(~tibble::tibble(weight = as.numeric(.))) %>% 
+          dplyr::bind_rows(.id = 'comp') %>% 
+          dplyr::mutate(data_type = gsub('(asparse|csparse)_([A-Za-z]+)_(.+)_weight$', '\\1', .data$comp),
+                        function_f = gsub('(asparse|csparse)_([A-Za-z]+)_(.+)_weight$', '\\2', .data$comp),
+                        component =  gsub('(asparse|csparse)_([A-Za-z]+)_(.+)_weight$', '\\3', .data$comp)) %>% 
+          dplyr::select(-.data$comp)
+      , by = c('data_type', 'function_f', 'component'))
     
     sparsedist <- 
       c(
@@ -256,7 +268,27 @@ g3_fit <- function(model,
       dplyr::select(.data$year, .data$step, .data$area, .data$data_type, 
                     .data$function_f, .data$component, .data$age, .data$length, 
                     .data$obs_mean, .data$obs_stddev, .data$obs_n, 
-                    .data$model_sum, .data$model_mean, .data$model_sqsum, .data$model_n)
+                    .data$model_sum, .data$model_mean, .data$model_sqsum, 
+                    .data$model_n, .data$weight, .data$nll)
+    
+    ## Fix lin reg nlls
+    if (any(sparsedist$function_f == 'linreg')){
+      sparsedist <- 
+        do.call('rbind', 
+                lapply(
+                  split(sparsedist, sparsedist$component),
+                  function(x){
+                    if (unique(x$function_f) == 'linreg'){
+                      x$nll <- 0
+                      x$nll[nrow(x)] <- 
+                        tmp[grep(paste0('nll_(asparse|csparse)_linreg_', 
+                                        unique(x$component), '__(nll$)'), 
+                                 names(tmp))][[1]][['nll']] 
+                    }
+                    return(x)
+                  })
+                )
+    }
     
   }else{
     sparsedist <- NULL
@@ -333,8 +365,8 @@ g3_fit <- function(model,
         dplyr::group_by(.data$stock, .data$fleet) %>% 
         dplyr::group_modify(~replace_inf(.x)) %>% 
         dplyr::ungroup() %>%
-        dplyr::mutate(length = (upper + lower)/2) %>% 
-        dplyr::select(-c(lower, upper))
+        dplyr::mutate(length = (.data$upper + .data$lower)/2) %>% 
+        dplyr::select(-c(.data$lower, .data$upper))
     }
     
     if ('age' %in% names(suitability)){
@@ -382,42 +414,53 @@ g3_fit <- function(model,
   if (any(grepl('^nll_', names(tmp)))){
     
     likelihood <-
-      ## Catch and abundance distributions
-      tmp[grep('^nll_(a|c)dist', names(tmp))] %>%
-      purrr::map(~tibble::tibble(time=names(.), lik_score = as.numeric(.))) %>% 
+      ## Catch and abundance distributions values
+      tmp[grep('^nll_(a|c)dist_(.+)__(wgt$|num$)', names(tmp))] %>%
+      purrr::map(~tibble::tibble(time=names(.), value = as.numeric(.))) %>% 
       dplyr::bind_rows(.id='lik_comp') %>% 
-      dplyr::mutate(type = gsub('.+(wgt|num|weight)','\\1', .data$lik_comp),
+      dplyr::mutate(measurement = gsub('.+(wgt|num)','\\1', .data$lik_comp),
                     component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\3', .data$lik_comp),
-                    data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>%
-      dplyr::select(-.data$lik_comp) %>%
-      tidyr::pivot_wider(names_from = .data$type, values_from = .data$lik_score) %>%
+                    data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>% 
+      dplyr::select(-.data$lik_comp) %>% 
+      dplyr::left_join(
+        tmp[grep('^nll_(a|c)dist_(.+)__weight$', names(tmp))] %>%
+          purrr::map(~tibble::tibble(time=names(.), weight = as.numeric(.))) %>% 
+          dplyr::bind_rows(.id='lik_comp') %>% 
+          dplyr::mutate(component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\3', .data$lik_comp),
+                        data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>% 
+          dplyr::select(-.data$lik_comp),
+      by = c('component', 'data_type', 'time')) %>% 
       ## Understocking
       dplyr::bind_rows(
         tmp[grep('^nll_understocking', names(tmp))] %>%
-          purrr::map(~tibble::tibble(time=names(.), lik_score = as.numeric(.))) %>% 
+          purrr::map(~tibble::tibble(time=names(.), value = as.numeric(.))) %>% 
           dplyr::bind_rows(.id='lik_comp') %>% 
           dplyr::mutate(component = 'understocking',
-                        data_type = NA_character_,
-                        num = NA_real_) %>% 
-          dplyr::select(-.data$lik_comp, wgt = .data$lik_score)
-      ) 
+                        data_type = 'model_preystocks',
+                        measurement = 'wgt') %>% 
+          dplyr::select(-.data$lik_comp) 
+      ) %>% 
+      extract_year_step() %>% 
+      dplyr::select(.data$year, .data$step, .data$component, .data$data_type, 
+                    .data$measurement, .data$weight, .data$value)
     
     ## Sparse data
-    if (any(grepl('^nll_(a|c)sparse_(.+)__nll', names(tmp)))){
-      lik_tmp <- 
-        tmp[grep('^nll_(a|c)sparse_(.+)__nll', names(tmp))] %>% 
-        purrr::map(~tibble::tibble(type=names(.), lik_score = as.numeric(.))) %>% 
-        dplyr::bind_rows(.id='lik_comp') %>%
-        dplyr::filter(.data$type == 'nll') %>%
-        dplyr::rename(nll = .data$lik_score) %>% 
-        dplyr::mutate(component = gsub('nll_(c|a)sparse_([A-Za-z]+)_(.+)__nll$', '\\3', .data$lik_comp),
-                      data_type = gsub('nll_(csparse|asparse)_([A-Za-z]+)_(.+)__nll$', '\\1_\\2', .data$lik_comp)) %>% 
-        dplyr::select(-.data$lik_comp, -.data$type)
-    }else{
-      lik_tmp <- NULL
+    if (!is.null(sparsedist)){
+      likelihood <-
+        likelihood %>% 
+        dplyr::bind_rows(
+          sparsedist %>% 
+            dplyr::group_by(.data$year, .data$step, .data$component, 
+                            .data$function_f, .data$data_type, .data$weight) %>% 
+            dplyr::summarise(value = sum(.data$nll), .groups = 'drop') %>% 
+            dplyr::mutate(data_type = paste(.data$data_type, 
+                                            .data$function_f, sep = '_'),
+                          measurement = '') %>% 
+            dplyr::select(.data$year, .data$step, .data$measurement, 
+                          .data$component, .data$data_type, .data$weight, 
+                          .data$value)  
+        )
     }
-    likelihood <- likelihood %>% dplyr::bind_rows(lik_tmp) %>% extract_year_step()
-    
   }else{
     likelihood <- NULL
   }
@@ -532,7 +575,7 @@ g3_fit <- function(model,
   ## Stock prey - fleet consumption first
   stock.prey <- 
     fleet_reports %>%
-    dplyr::filter(fleet %in% fleet_names) %>% 
+    dplyr::filter(.data$fleet %in% fleet_names) %>% 
     dplyr::group_by(.data$year, .data$step, .data$area, .data$stock, .data$age) %>%
     dplyr::summarise(number_consumed = sum(.data$number_consumed),
                      biomass_consumed = sum(.data$biomass_consumed), .groups = 'drop') %>% 
@@ -664,7 +707,7 @@ g3_fit <- function(model,
         dplyr::summarise(suit = sum(.data$biomass_consumed * .data$suit) / sum(.data$biomass_consumed), .groups = 'drop') %>%
         dplyr::rename(stock = .data$prey)
       
-      ## TO-DO: Add weighted mortality
+      ## TO-DO: Add weighted mortality 
       f.by.year <-
         stock.prey %>% 
         dplyr::left_join(
@@ -756,17 +799,17 @@ g3_fit <- function(model,
     sidat = sidat,
     stockdist = stockdist,
     catchdist.fleets = catchdist.fleets,
-    sparsedist = sparsedist,
+    sparsedist = sparsedist %>% dplyr::select(-c(.data$weight, .data$nll)),
     #suitability = predator.prey %>% 
     #  dplyr::select(.data$year,.data$step,area=.data$area, stock=.data$prey,
     #                fleet=.data$predator,.data$length,.data$suit) %>% 
     #  dplyr::ungroup(),
-    suitability = suitability |> 
-      bind_rows(
+    suitability = suitability %>% 
+      dplyr::bind_rows(
         tibble::tibble(stock = NA_character_, fleet = NA_character_,
                        year = NA_real_, step = NA_real_, area = NA_character_,
                        age = NA_integer_, length = NA_real_, predator_length = NA_character_)
-        ) |> utils::head(-1),
+        ) %>% utils::head(-1),
     likelihood = likelihood,
     stock.prey = stock.prey,
     stock.std = stock.std,
