@@ -460,6 +460,7 @@ g3_fit <- function(model,
                           .data$component, .data$data_type, .data$weight, 
                           .data$value)  
         )
+      sparsedist <- sparsedist %>% dplyr::select(-c(.data$weight, .data$nll))
     }
   }else{
     likelihood <- NULL
@@ -799,7 +800,7 @@ g3_fit <- function(model,
     sidat = sidat,
     stockdist = stockdist,
     catchdist.fleets = catchdist.fleets,
-    sparsedist = sparsedist %>% dplyr::select(-c(.data$weight, .data$nll)),
+    sparsedist = sparsedist,
     #suitability = predator.prey %>% 
     #  dplyr::select(.data$year,.data$step,area=.data$area, stock=.data$prey,
     #                fleet=.data$predator,.data$length,.data$suit) %>% 
