@@ -307,43 +307,7 @@ g3_fit_inner <- function(tmp,
   
   
   ## Survey or other indices 
-  if (any(grepl('^.+_surveyindices_.+__num$|^.+_surveyindices_.+__wgt$', names(tmp)))){
-    
-    sidat_params <- 
-      tmp[grepl('^.+_surveyindices_.+__params$', names(tmp))] %>% 
-      purrr::map(stats::setNames, c('alpha', 'beta')) %>% 
-      dplyr::bind_rows(.id = 'id') %>%
-      dplyr::mutate(id = gsub('^cdist_|^adist_|_model__params$', '', .data$id))
-    
-    sidat <- 
-      tmp[grep('(^adist|^cdist)_surveyindices_.+__num$|(^adist|^cdist)_surveyindices_.+__wgt$',names(tmp))] %>%
-      purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(index = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2', .data$comp),
-                    type = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
-                    fleet = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
-                    origin = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\5', .data$comp),
-                    name = gsub('(cdist|adist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2.\\4', .data$comp),
-                    #length = gsub('len', '', .data$length) %>% as.numeric(),
-                    area = tryCatch(as.numeric(as.factor(.data$area)),
-                                    error = function(z) 1)) %>%
-      split_length() %>% 
-      extract_year_step() %>%
-      dplyr::select(-.data$comp) %>%
-      tidyr::pivot_wider(names_from = .data$origin, values_from = .data$Freq) %>%
-      dplyr::mutate(id = paste(.data$index, .data$type, .data$fleet, sep = '_')) %>% 
-      dplyr::left_join(sidat_params, by = 'id') %>% 
-      dplyr::rename(observed = .data$obs, number = .data$model, intercept = .data$alpha, slope = .data$beta) %>% 
-      dplyr::mutate(predicted = ifelse(.data$type == 'log', 
-                                       exp(.data$intercept) * .data$number^.data$slope,
-                                       .data$intercept + .data$slope * .data$number)) %>% 
-      dplyr::select(.data$name, .data$year, .data$step, .data$area, .data$length, .data$lower, .data$upper, 
-                    .data$fleet, .data$index, .data$type, .data$intercept, .data$slope, 
-                    .data$observed, .data$number, .data$predicted) 
-    
-  }else{
-    sidat <- NULL
-  }
+  sidat <- g3f_sidat(tmp)
   
   ## ----------------------------------------------------------------------
   
@@ -852,14 +816,17 @@ extract_year_step <- function(data){
   if (!("time" %in% names(data))) return(data)
   
   if (any(!grepl('-', data$time))){
-    data[!grepl('-', data$time), 'time'][[1]] <- paste0(data[!grepl('-', data$time), 'time'][[1]], '-0')
+    data[!grepl('-', data$time), 'time'][[1]] <- 
+      paste0(data[!grepl('-', data$time), 'time'][[1]], '-0')
   }
   
-  data %>% 
-    tidyr::extract(col = 'time', 
-                   into = c('year', 'step'), 
-                   regex='^(\\d+)-(\\d+)$', convert=TRUE) %>% 
-    return()
+  data <- 
+    within(data, {
+    step = gsub('^(\\d+)-(\\d+)$', "\\2", time) |> as.numeric();
+    year = gsub('^(\\d+)-(\\d+)$', "\\1", time) |> as.numeric()
+  })
+  
+  return(data[,names(data) != "time"])
   
 }
 
@@ -880,12 +847,12 @@ split_age <- function(data){
 split_length <- function(data){
   if (!('length' %in% names(data))) return(data)
   
-  tmp <-
-    data %>% 
-    dplyr::mutate(lower = gsub('(.+):(.+)', '\\1', .data$length) %>% as.numeric(),
-                  upper = gsub('(.+):(.+)', '\\2', .data$length) %>% as.numeric())
+  data |> 
+    within( {
+      upper = gsub('(.+):(.+)', '\\2', length) |> as.numeric();
+      lower = gsub('(.+):(.+)', '\\1', length) |> as.numeric()
+    } )
   
-  return(tmp)
 }
 
 replace_inf <- function(data){
