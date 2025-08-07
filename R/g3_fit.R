@@ -19,10 +19,6 @@ g3_fit <- function(model,
     stop("The printatstart argument must be '0' or '1' (class numeric)")
   }
   
-  ## Returning parameters as they are put in for now
-  ## so model(fit$params) will work without any fiddling
-  out_params <- params
-  
   if (inherits(model, "g3_r")) {
     if (is.data.frame(params)) params <- params$value
       if ("report_detail" %in% names(params) && printatstart == 1) {
@@ -78,16 +74,31 @@ g3_fit <- function(model,
     tmp <- attributes(model(params))
     data_env <- environment(model)
   }
-  
-  
+
+  ## Add run information back to reporting output, if not already there
+  if (is.null(tmp$model_params)) tmp$model_params <- params
+  if (is.null(tmp$model_data)) tmp$model_data <- data_env
+
+  return(g3_fit_inner(tmp, rec.steps = rec.steps, steps = steps))
+}
+
+# Generate fit report from reporting output of g3_fit()
+g3_fit_inner <- function(tmp,
+                         rec.steps = 1,
+                         steps = 1) {
+  data_env <- tmp$model_data
+
+  ## Returning parameters as they are put in for now
+  ## so model(fit$params) will work without any fiddling
+  params <- tmp$model_params
+  out_params <- params
   
   ## Calculate the step size as a proportion
   step_lengths <- tmp$step_lengths
-  if (is.null(step_lengths)) {
-      model_f <- gadget3:::f_concatenate(gadget3:::g3_collate(attr(model, 'actions')))
-      step_lengths <- get('step_lengths', envir = environment(model_f), inherits = TRUE)
-  }
   step_size <- 1/length(step_lengths)
+
+  # If dend_ or endprint_ are available, then printatstart was 0
+  printatstart <- if (any(grepl("^(dend|endprint)_(.+)__wgt$", names(tmp)))) 0 else 1
 
   # Work out abundance naming
   if(any(grepl("^dstart_(.+)__wgt$", names(tmp)))) {
