@@ -2,14 +2,14 @@
 #'
 #' @param model A G3 model built using \code{\link[gadget3]{g3_to_r}} or \code{\link[gadget3]{g3_to_tmb}}. The model must include \code{\link[gadget3]{g3a_report_detail}}.
 #' @param params The fitted parameters post-optimisation
-#' @param rec.steps Which steps should be considered recruitment steps? Vector of int, or NULL for all steps.
+#' @param stock_rec_step Named list where each element contains the step(s) for a specific stock (name of the element). E.g. list(bli_imm = 1, bli_dummy = 2). If NULL or a stock is not included/misspelled, all steps are returned.  
 #' @param steps Which steps to include in the annual output? Vector of int.
 #' @param printatstart Should the stock standard be printed at the start of the timestep (1) or the end (0)
 #' @return List of tibbles
 #' @export
 g3_fit <- function(model, 
                    params, 
-                   rec.steps = 1, 
+                   stock_rec_step = NULL, 
                    steps = 1,
                    printatstart = 1){
   
@@ -79,12 +79,12 @@ g3_fit <- function(model,
   if (is.null(tmp$model_params)) tmp$model_params <- params
   if (is.null(tmp$model_data)) tmp$model_data <- data_env
 
-  return(g3_fit_inner(tmp, rec.steps = rec.steps, steps = steps))
-}
+  return(g3_fit_inner(tmp, stock_rec_step = stock_rec_step, steps = steps))
+} 
 
 # Generate fit report from reporting output of g3_fit()
 g3_fit_inner <- function(tmp,
-                         rec.steps = 1,
+                         stock_rec_step = NULL,
                          steps = 1) {
   data_env <- tmp$model_data
 
@@ -445,28 +445,7 @@ g3_fit_inner <- function(tmp,
   ## Stock-recruitment
   ## ---------------------------------------------------------------------------
   
-  if (any(grepl('detail_(.+)__(spawnednum$|renewalnum$)', names(tmp)))){
-    
-    stock.recruitment <-
-      tmp[grepl('detail_(.+)__(spawnednum$|renewalnum$)', names(tmp))] %>% 
-      purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>% 
-      dplyr::bind_rows(.id = 'comp') %>% 
-      dplyr::mutate(stock = gsub('detail_(.+)__(spawnednum$|renewalnum$)', '\\1', .data$comp),
-                    age = gsub('age', '', .data$age) %>% as.numeric()) %>% 
-      extract_year_step() %>%
-      dplyr::group_by(.data$stock) %>% 
-      dplyr::filter(.data$age == min(.data$age))
-    
-    ## ADD Recruit-at-age & and min(age) should be taken from stock attributes
-    if (!is.null(rec.steps)) stock.recruitment <- stock.recruitment %>% dplyr::filter(.data$step %in% rec.steps)
-    stock.recruitment <- stock.recruitment %>%
-      dplyr::group_by(.data$stock, .data$year, .data$step, .data$area, .data$age) %>% 
-      dplyr::summarise(recruitment = sum(.data$Freq)) %>% 
-      dplyr::ungroup() 
-    
-  }else{
-    stock.recruitment <- NULL
-  }
+  stock.recruitment <- g3f_stock.recruitment(tmp, stock_rec_step)
   
   ## ---------------------------------------------------------------------------
   ## ---------------------------------------------------------------------------
