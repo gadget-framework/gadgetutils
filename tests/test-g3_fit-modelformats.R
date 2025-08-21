@@ -1,0 +1,105 @@
+library(unittest)
+library(gadget3)
+library(gadgetutils)
+
+library(unittest)
+
+options('gadget3.tmb.compile_flags', c("-O0", "-g"))
+
+# Replace function with new one, optionally returning to normal after expr
+mock_functions <- function(ns, new_funcs, expr) {
+    assign_list <- function (ns, replacements) {
+        for (k in names(replacements)) {
+            assignInNamespace(k, replacements[[k]], ns)
+        }
+    }
+
+    # Replace temporarily, put the old ones back again
+    old_funcs <- structure(
+        lapply(names(new_funcs), function(n) getFromNamespace(n, ns)),
+        names = names(new_funcs))
+    tryCatch({
+        assign_list(ns, new_funcs)
+        expr
+    }, finally = {
+        assign_list(ns, old_funcs)
+    })
+}
+
+# We don't actually care what g3_fit_inner does (and it can't process such a minimal model),
+# we just want to see what the tmp parameter looks like
+mock_g3_fit <- function (...) {
+    tmp <- mock_functions('gadgetutils', list(
+        g3_fit_inner = function (...) list(...) ), g3_fit(...))[[1]]
+    return(tmp)
+}
+
+stocks <- list(
+    imm = g3_stock(c(species = "fish", "imm"), 1:10 * 10) |> g3s_age(1, 5) )
+
+actions <- list(
+    g3a_time(2000, 2001),
+    g3a_age(stocks$imm),
+    g3a_initialconditions_normalcv(stocks$imm),
+    NULL )
+
+# Generate model with some parameters to start with
+model_cpp <- g3_to_tmb(actions)
+attr(model_cpp, "parameter_template") |>
+  g3_init_val("*.init.scalar", 10, optimise = FALSE) |>
+  g3_init_val("*.init.#", 10, lower = 0.001, upper = 1e6) |>
+  g3_init_val("*.M.#", 0.5, lower = 0.1, upper = 0.8) |>
+  g3_init_val("init.F", 0.5, lower = 0.1, upper = 10) |>
+  g3_init_val("*_imm.Linf", 144.645) |>
+  g3_init_val("*.K", 0.3, lower = 0.04, upper = 1.2) |>
+  g3_init_val("*.t0", -0.8, optimise = FALSE) |>
+  g3_init_val("*.walpha", 0.01, optimise = FALSE) |>
+  g3_init_val("*.wbeta", 3, optimise = FALSE) |>
+  identity() -> params.def
+
+ok_group("R model, with reporting", local({
+    model <- g3_to_r(c(actions, list(
+        g3a_report_detail(actions) )))
+    params.in <- params.def
+    params.in["report_detail", "switch"] <- "report_detail"
+    params.in["report_detail", "value"] <- 1
+
+    ok(ut_cmp_error(mock_g3_fit(model, params.in$value), "params"), "Parameter list isn't allowed")
+
+    tmp <- mock_g3_fit(model, params.in)
+    ok(is.data.frame(tmp$model_params), "model_params returned as data.frame")
+    ok("report_detail" %in% rownames(tmp$model_params), "model_params has report_detail")
+    ok(ut_cmp_equal(tmp$model_params, params.in), "model_params match params.in")
+}))
+
+ok_group("R model, without reporting", local({
+    model <- g3_to_r(c(actions, list( )))
+    params.in <- params.def
+
+    ok(ut_cmp_error(mock_g3_fit(model, params.in$value), "params"), "Parameter list isn't allowed")
+
+    tmp <- mock_g3_fit(model, params.in)
+    ok(is.data.frame(tmp$model_params), "model_params returned as data.frame")
+    ok(ut_cmp_equal(tmp$model_params, params.in), "model_params match params.in (i.e. report_detail hasn't leaked in)")
+}))
+
+ok_group("tmb model, with reporting", local({
+    model <- g3_to_tmb(c(actions, list(
+        g3a_report_detail(actions) )))
+    params.in <- attr(model, "parameter_template")
+    for (n in params.def$switch) params.in[n,] <- params.def[n,]
+
+    tmp <- mock_g3_fit(model, params.in)
+    ok(is.data.frame(tmp$model_params), "model_params returned as data.frame")
+    ok("report_detail" %in% rownames(tmp$model_params), "model_params has report_detail")
+    ok(ut_cmp_equal(tmp$model_params, params.in), "model_params match params.in")
+}))
+
+ok_group("tmb model, without reporting", local({
+    model <- g3_to_tmb(c(actions, list( )))
+    params.in <- params.def
+
+    tmp <- mock_g3_fit(model, params.in)
+    ok(is.data.frame(tmp$model_params), "model_params returned as data.frame")
+    ok(ut_cmp_equal(tmp$model_params, params.in), "model_params match params.in (i.e. report_detail hasn't leaked in)")
+}))
