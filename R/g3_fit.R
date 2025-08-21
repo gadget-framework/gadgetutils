@@ -14,22 +14,21 @@ g3_fit <- function(model,
                    printatstart = 1){
   
   ## Checks
-  stopifnot(is.list(params))
+  stopifnot(is.data.frame(params))  # NB: Only accept table params, not list. The list form will likely disappear eventually
   if (!(printatstart %in% c(0,1))){
     stop("The printatstart argument must be '0' or '1' (class numeric)")
   }
   
   if (inherits(model, "g3_r")) {
-    if (is.data.frame(params)) params <- params$value
-      if ("report_detail" %in% names(params) && printatstart == 1) {
-          params$report_detail <- 1L
-          tmp <- attributes(model(params))
-          data_env <- environment(model)
-      } else {
-          tmp <- NULL
-      }
+    if ("report_detail" %in% rownames(params) && printatstart == 1) {
+        params["report_detail", "value"] <- 1L
+        tmp <- attributes(model(params))
+        data_env <- environment(model)
+    } else {
+        tmp <- NULL
+    }
   } else if (inherits(model, "g3_cpp")) {
-      if (is.data.frame(params) && "report_detail" %in% params$switch && printatstart == 1) {
+      if ("report_detail" %in% params$switch && printatstart == 1) {
           params['report_detail', 'value'] <- 1L
           obj_fun <- gadget3::g3_tmb_adfun(model, params, type = 'Fun')
           tmp <- obj_fun$report(gadget3::g3_tmb_par(params))
@@ -69,9 +68,9 @@ g3_fit <- function(model,
     model <- gadget3::g3_to_r(re_actions)
     
     ## Run model
-    if (is.data.frame(params)) params <- params$value
-    params$report_detail <- 1L
-    tmp <- attributes(model(params))
+    r_params <- if (is.data.frame(params)) params$value else params
+    r_params$report_detail <- 1L
+    tmp <- attributes(model(r_params))
     data_env <- environment(model)
   }
 

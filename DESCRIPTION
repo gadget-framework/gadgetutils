@@ -25,3 +25,5 @@ Imports:
     tidyselect,
     modelr,
     parallel
+Suggests:
+    unittest (>= 1.4)
