@@ -100,34 +100,9 @@ g3_fit_inner <- function(tmp,
   # If dend_ or endprint_ are available, then printatstart was 0
   printatstart <- if (any(grepl("^(dend|endprint)_(.+)__wgt$", names(tmp)))) 0 else 1
 
-  # Work out abundance naming
-  if(any(grepl("^dstart_(.+)__wgt$", names(tmp)))) {
-     # New style name
-     abundnum_re <- "^dstart_(.+)__num$"
-     abundwgt_re <- "^dstart_(.+)__wgt$"
-  } else {
-     # Old style name
-     abundnum_re <- "^detail_(.+)__num$"
-     abundwgt_re <- "^detail_(.+)__wgt$"
-  }
-  
-  stock_pred_names <- function(reports, re, pos){
-    tmp_names <- regmatches(names(reports), regexec(re, names(reports)))
-    tmp_names <- vapply(tmp_names, function(x){
-      if (length(x) == pos) x[[pos]] else as.character(NA)
-    }, as.character(1))
-    return(
-      unique(tmp_names[!is.na(tmp_names)])
-    )
-  }
-  
   ## Stock, predator, and fleet names
-  stock_names <- stock_pred_names(tmp, abundnum_re, 2)
-  pred_names <- stock_pred_names(tmp, paste0("^detail",
-                                             "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
-                                             "_(.+)",
-                                             "__cons"), 3)
-  fleet_names <- pred_names[!(pred_names %in% stock_names)]
+  sp_names <- stock_pred_names(tmp)
+  fleet_names <- sp_names$preds[!(sp_names$preds %in% sp_names$stocks)]
   
   ##############################################################################
   ##############################################################################
@@ -234,7 +209,7 @@ g3_fit_inner <- function(tmp,
   if (any(grepl('^suit_(.+)_(.+)__report', names(tmp)))){
     suit_re <- paste0(
         "^suit",
-        "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+        "_(\\Q", paste(sp_names$stocks, collapse = "\\E|\\Q"), "\\E)",
         "_(.+)",
         "__report" )
     
@@ -371,24 +346,24 @@ g3_fit_inner <- function(tmp,
   
   ## Stock reports
   weight_reports <- 
-    tmp[grepl(abundwgt_re, names(tmp))] %>% 
+    tmp[grepl("^(dstart|detail)_(.+)__wgt$", names(tmp))] %>% 
     purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'weight') %>% 
     dplyr::bind_rows(.id='comp') %>% 
-    dplyr::mutate(stock = gsub(abundwgt_re, '\\1', .data$comp)) %>% 
+    dplyr::mutate(stock = gsub("^(dstart|detail)_(.+)__wgt$", '\\2', .data$comp)) %>% 
     dplyr::select(-.data$comp) 
   
   if (any(grepl("__cons$", names(tmp)))) {
     # detail_(prey)_(pred)__cons arrays
     consumption_re <- paste0(
         "^detail",
-        "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+        "_(\\Q", paste(sp_names$stocks, collapse = "\\E|\\Q"), "\\E)",
         "_(.+)",
         "__cons" )
   } else {
     # Pre-predation stype __predby_ arrays
     consumption_re <- paste0(
         "^detail",
-        "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+        "_(\\Q", paste(sp_names$stocks, collapse = "\\E|\\Q"), "\\E)",
         "__predby",
         "_(.+)$" )
   }
@@ -413,10 +388,10 @@ g3_fit_inner <- function(tmp,
   
   ## Abundance
   num_reports <- 
-    tmp[grepl(abundnum_re, names(tmp))] %>% 
+    tmp[grepl("^(dstart|detail)_(.+)__num$", names(tmp))] %>% 
     purrr::map(as.data.frame.table, stringsAsFactors = FALSE, responseName = 'abundance') %>% 
     dplyr::bind_rows(.id='comp') %>% 
-    dplyr::mutate(stock = gsub(abundnum_re, '\\1', .data$comp)) %>% 
+    dplyr::mutate(stock = gsub("^(dstart|detail)_(.+)__num$", '\\2', .data$comp)) %>% 
     dplyr::select(-.data$comp) %>% 
     dplyr::left_join(weight_reports, by = c("time", "area", "stock", "age", "length")) %>% 
     split_length() %>%
@@ -461,7 +436,7 @@ g3_fit_inner <- function(tmp,
     tidyr::replace_na(list(mortality = 0)) 
   
   ## Add in biological consumption if included in model
-  if (length(fleet_names) < length(pred_names)){
+  if (length(fleet_names) < length(sp_names$preds)){
     
     stock.prey <- 
       stock.prey %>% 
@@ -482,7 +457,7 @@ g3_fit_inner <- function(tmp,
   ## -------------------------------
   
   ## Predator - prey
-  if (length(pred_names) > 0){
+  if (length(sp_names$preds) > 0){
     
     # predator.prey <- 
     #   fleet_reports %>%
@@ -777,4 +752,34 @@ replace_inf <- function(data){
     data$upper[ind] <- data$lower[ind] + replacement
   }
   return(data)
+}
+
+## Need to check what happens if no predation
+stock_pred_names <- function(reports, stock_names = NULL){
+  
+  inner_fun <- function(reports, re, pos){
+    
+    tmp_names <- regmatches(names(reports), regexec(re, names(reports)))
+    tmp_names <- vapply(tmp_names, function(x){
+      if (length(x) == pos) x[[pos]] else as.character(NA)
+    }, as.character(1))
+    return(
+      unique(tmp_names[!is.na(tmp_names)])
+    )
+    
+  }
+  
+  if (is.null(stock_names)) 
+    stock_names <- inner_fun(reports, "^(?:dstart|detail)_(.+)__num$", 2)
+  
+  pred_names <- 
+    inner_fun(reports,
+              paste0("^detail",
+                     "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+                     "_(.+)",
+                     "__cons"), 3)
+  if (length(pred_names) == 0) pred_names <- NA_character_
+  
+  return(list(stocks = stock_names, preds = pred_names))
+  
 }
