@@ -135,87 +135,8 @@ g3_fit_inner <- function(tmp,
   ## --------------------------------------------------------------
   ## Catch distributions
   ## --------------------------------------------------------------
-  if (any(grepl('^cdist_.+__(num|wgt)$', names(tmp)))){
   
-    ## To-do: add in age and length attributes from stock objects
-    ## Merge together catch distribution observations and predictions
-    dat <- 
-      tmp[grep('^cdist_.+__(num|wgt)$', names(tmp))] %>%
-      purrr::map(as.data.frame.table, stringsAsFactors = FALSE) %>%
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(data_function = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\2', .data$comp),
-                    #type = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
-                    #fleetnames = gsub('(cdist)_([A-Za-z]+)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
-                    origin = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\4', .data$comp),
-                    name = gsub('(cdist)_([A-Za-z]+)_(.+)_(model|obs)__(num|wgt)', '\\3', .data$comp),
-                    #length = gsub('len', '', .data$length) %>% as.numeric(),
-                    area = tryCatch(as.numeric(as.factor(.data$area)),
-                                    error = function(z) 1)) %>%
-      split_length() %>%
-      dplyr::group_by(.data$name) %>% 
-      dplyr::group_modify(~replace_inf(.x)) %>% 
-      dplyr::ungroup() %>% 
-      dplyr::mutate(avg.length = (.data$lower + .data$upper)/2) %>% 
-      dplyr::select(-.data$comp) %>%
-      extract_year_step() %>%
-      tidyr::pivot_wider(names_from = .data$origin, values_from = .data$Freq) %>% 
-      dplyr::rename(observed = .data$obs, predicted = .data$model) %>% 
-      tibble::as_tibble()
-  
-    ## Add stock and stock_re columns if they dont exist
-    if (!('stock' %in% names(dat))) dat$stock <- NA
-    if (!('stock_re' %in% names(dat))) dat$stock_re <- NA
-    if (!('predator_length' %in% names(dat))) dat$predator_length <- NA
-  
-    ## Maturity
-    ## TO-DO ADD LOWER AND UPPER
-    nastock_index <- is.na(dat$stock) & is.na(dat$stock_re)
-    if (all(nastock_index)){
-      stockdist <- NULL
-    }else{
-      stockdist <- 
-        dat[!nastock_index,] %>% 
-        dplyr::group_by(.data$year, .data$step, .data$area, .data$predator_length, 
-                        .data$length, .data$age, .data$name) %>%
-        dplyr::mutate(pred.ratio = .data$predicted / sum(.data$predicted, na.rm = TRUE),
-                      obs.ratio = .data$observed / sum(.data$observed, na.rm = TRUE),
-                      length = .data$avg.length) %>%
-        dplyr::ungroup() %>% 
-        dplyr::select(.data$name, .data$year, .data$step, .data$area, .data$predator_length, 
-                      dplyr::matches("stock|stock_re"), .data$lower, .data$upper, .data$length, .data$age, 
-                      .data$observed, .data$obs.ratio, .data$predicted, .data$pred.ratio)
-    }
-
-    ## Age and Length distributions
-    if (all(!nastock_index)){
-      catchdist.fleets <- NULL
-    }else{
-      catchdist.fleets <- 
-        dat[nastock_index,] %>% 
-        dplyr::group_by(.data$year, .data$step, .data$area, .data$name) %>%
-        dplyr::mutate(total.catch = sum(.data$observed, na.rm = TRUE),
-                      total.pred = sum(.data$predicted, na.rm = TRUE),
-                      obs = .data$observed,
-                      pred = .data$predicted,
-                      observed = .data$observed / sum(.data$observed, na.rm = TRUE),
-                      predicted = .data$predicted / sum(.data$predicted, na.rm = TRUE),
-                      residuals = ifelse(.data$observed == 0, NA, .data$observed - .data$predicted)) %>% 
-        dplyr::ungroup() %>%
-        split_age() %>%
-        dplyr::group_by(.data$name) %>% 
-        dplyr::mutate(age = dplyr::case_when(length(unique(age)) == 1 ~ paste0('all', lower_age),
-                                   TRUE ~ paste0('age', lower_age))) %>% 
-        dplyr::ungroup() %>% 
-        dplyr::select(.data$name, .data$year, .data$step, .data$area, 
-                      dplyr::matches("stock|stock_re"), .data$length, .data$lower, .data$upper, .data$avg.length, .data$age,  
-                      .data$obs, .data$total.catch, .data$observed,
-                      .data$pred, .data$total.pred, .data$predicted, .data$residuals)
-    }
-  } else {
-    dat <- NULL
-    stockdist <- NULL
-    catchdist.fleets <- NULL
-  }
+  catchdist <- g3f_catchdistribution(tmp)
   
   ## -------------------------------------------------------------------------
   
@@ -308,8 +229,6 @@ g3_fit_inner <- function(tmp,
   
   ## Survey or other indices 
   sidat <- g3f_sidat(tmp)
-  
-  ## ----------------------------------------------------------------------
   
   ## Suitability
   if (any(grepl('^suit_(.+)_(.+)__report', names(tmp)))){
@@ -752,8 +671,8 @@ g3_fit_inner <- function(tmp,
   
   out <- list(
     sidat = sidat,
-    stockdist = stockdist,
-    catchdist.fleets = catchdist.fleets,
+    stockdist = catchdist$stockdist,
+    catchdist.fleets = catchdist$catchdist.fleets,
     sparsedist = sparsedist,
     #suitability = predator.prey %>% 
     #  dplyr::select(.data$year,.data$step,area=.data$area, stock=.data$prey,
@@ -823,14 +742,29 @@ split_age <- function(data){
   return(tmp)
 }
 
-split_length <- function(data){
+split_length <- function(data, mean_length_col = NULL, replace_inf = FALSE){
   if (!('length' %in% names(data))) return(data)
   
-  data |> 
+  data <- 
+    data |> 
     within( {
       upper = gsub('(.+):(.+)', '\\2', length) |> as.numeric();
       lower = gsub('(.+):(.+)', '\\1', length) |> as.numeric()
     } )
+  
+  ## Sort out infinities
+  if (replace_inf){
+    ind <- is.infinite(data$upper)
+    if (any(ind)){
+      replacement <- abs(diff(sort(unique(data$upper[!ind]), decreasing = TRUE)[1:2]))
+      data$upper[ind] <- data$lower[ind] + replacement
+    }  
+  }
+  
+  if (!is.null(mean_length_col)) 
+    data[[mean_length_col]] <- (data$upper + data$lower)/2
+  
+  return(data)
   
 }
 

@@ -4,14 +4,14 @@
 \alias{g3_fit}
 \title{Build output summary suitable for feeding into gadgetplots}
 \usage{
-g3_fit(model, params, rec.steps = 1, steps = 1, printatstart = 1)
+g3_fit(model, params, stock_rec_step = NULL, steps = 1, printatstart = 1)
 }
 \arguments{
 \item{model}{A G3 model built using \code{\link[gadget3]{g3_to_r}} or \code{\link[gadget3]{g3_to_tmb}}. The model must include \code{\link[gadget3]{g3a_report_detail}}.}
 
 \item{params}{The fitted parameters post-optimisation}
 
-\item{rec.steps}{Which steps should be considered recruitment steps? Vector of int, or NULL for all steps.}
+\item{stock_rec_step}{Named list where each element contains the step(s) for a specific stock (name of the element). E.g. list(bli_imm = 1, bli_dummy = 2). If NULL or a stock is not included/misspelled, all steps are returned.}
 
 \item{steps}{Which steps to include in the annual output? Vector of int.}
 
