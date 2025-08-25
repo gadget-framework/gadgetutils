@@ -109,170 +109,14 @@ g3_fit_inner <- function(tmp,
   ## Catch distributions
   catchdist <- g3f_catchdistribution(tmp)
   
-  
   ## Sparse distributions
-  if (any(grepl('^nll_(a|c)sparse_', names(tmp)))){
-    
-    sp_df <- tibble::tibble(year = NA_real_, step = NA_real_, area = NA_character_,
-                            age = NA_integer_, length = NA_real_, obs_mean = NA_real_,
-                            obs_stddev = NA_real_, obs_n = NA_real_,
-                            model_sum = NA_real_, model_sqsum = NA_real_, 
-                            model_mean = NA_real_, model_n = NA_real_)
-    
-    ## Observed and model search strings
-    sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(area$|age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n)'
-    sp_re <-     'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(model_sum$|model_sqsum$|model_n$|nll$)'
-    sp_re_all <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(age$|length$|year$|step$|obs_mean$|obs_stddev|obs_n$|model_sum$|model_sqsum$|model_n$|nll$)'
-    
-    sparse_nll_names <- names(mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env))
-    
-    sparsedist <- 
-      mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env) %>%
-      purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::bind_rows(
-        tmp[grep(sp_re, names(tmp))] %>% 
-          purrr::map(~tibble::tibble(value = as.numeric(.))) %>% 
-          dplyr::bind_rows(.id = 'comp')
-      ) %>% 
-      dplyr::mutate(data_type = gsub(sp_re_all, '\\1', .data$comp),
-                    function_f = gsub(sp_re_all, '\\2', .data$comp),
-                    component =  gsub(sp_re_all, '\\3', .data$comp),
-                    column = gsub(sp_re_all, '\\4', .data$comp)) %>% 
-      #component = gsub('__', '.', .data$component)) %>% 
-      dplyr::select(-.data$comp) %>% 
-      ## Take weights from parameters
-      dplyr::full_join(
-        params$value[unique(gsub('__(.+)$', '_weight', gsub('^nll_', '', sparse_nll_names)))] %>% 
-          purrr::map(~tibble::tibble(weight = as.numeric(.))) %>% 
-          dplyr::bind_rows(.id = 'comp') %>% 
-          dplyr::mutate(data_type = gsub('(asparse|csparse)_([A-Za-z]+)_(.+)_weight$', '\\1', .data$comp),
-                        function_f = gsub('(asparse|csparse)_([A-Za-z]+)_(.+)_weight$', '\\2', .data$comp),
-                        component =  gsub('(asparse|csparse)_([A-Za-z]+)_(.+)_weight$', '\\3', .data$comp)) %>% 
-          dplyr::select(-.data$comp)
-      , by = c('data_type', 'function_f', 'component'))
-    
-    sparsedist <- 
-      c(
-        split(sparsedist, sparsedist$component) %>% 
-          purrr::map(function(x){
-            x %>% 
-              dplyr::group_by(.data$column) %>% 
-              dplyr::mutate(row = dplyr::row_number()) %>% 
-              tidyr::pivot_wider(names_from = .data$column, values_from = .data$value, values_fill = NA) %>% 
-              dplyr::ungroup() %>% 
-              dplyr::select(-row)
-          }),
-        list(sp_df)) %>% 
-      dplyr::bind_rows() %>% 
-      dplyr::mutate(model_mean = .data$model_sum / .data$model_n) %>% 
-      tidyr::drop_na(.data$component) %>% 
-      dplyr::select(.data$year, .data$step, .data$area, .data$data_type, 
-                    .data$function_f, .data$component, .data$age, .data$length, 
-                    .data$obs_mean, .data$obs_stddev, .data$obs_n, 
-                    .data$model_sum, .data$model_mean, .data$model_sqsum, 
-                    .data$model_n, .data$weight, .data$nll)
-    
-    ## Fix lin reg nlls
-    if (any(sparsedist$function_f == 'linreg')){
-      sparsedist <- 
-        do.call('rbind', 
-                lapply(
-                  split(sparsedist, sparsedist$component),
-                  function(x){
-                    if (unique(x$function_f) == 'linreg'){
-                      x$nll <- 0
-                      x$nll[nrow(x)] <- 
-                        tmp[grep(paste0('nll_(asparse|csparse)_linreg_', 
-                                        unique(x$component), '__(nll$)'), 
-                                 names(tmp))][[1]][['nll']] 
-                    }
-                    return(x)
-                  })
-                )
-    }
-    
-  }else{
-    sparsedist <- NULL
-  }
-  
+  sparsedist <- g3f_sparsedata(tmp, data_env = data_env)
   
   ## Survey or other indices 
   sidat <- g3f_sidat(tmp)
   
   ## Suitability
-  if (any(grepl('^suit_(.+)_(.+)__report', names(tmp)))){
-    suit_re <- paste0(
-        "^suit",
-        "_(\\Q", paste(sp_names$stocks, collapse = "\\E|\\Q"), "\\E)",
-        "_(.+)",
-        "__report" )
-    
-    # New-style g3a_suitability_report() output
-    suitability <-
-      tmp[grep(suit_re, names(tmp))] %>%
-      purrr::map(as.data.frame.table, stringsAsFactors = F, responseName = 'suit') %>%
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(stock = gsub(suit_re, '\\1', .data$comp),
-                    fleet = gsub(suit_re, '\\2', .data$comp)) %>%
-      extract_year_step() %>% 
-      dplyr::select(.data$stock, .data$fleet, 
-                    dplyr::matches("year|step|area|age|length|predator_length"),
-                    .data$suit) %>%
-      identity()
-    
-    # Fix length and age if present
-    if ('length' %in% names(suitability)){
-      suitability <-
-        suitability %>% 
-        split_length() %>%
-        dplyr::group_by(.data$stock, .data$fleet) %>% 
-        dplyr::group_modify(~replace_inf(.x)) %>% 
-        dplyr::ungroup() %>%
-        dplyr::mutate(length = (.data$upper + .data$lower)/2) %>% 
-        dplyr::select(-c(.data$lower, .data$upper))
-    }
-    
-    if ('age' %in% names(suitability)){
-      suitability$age <- as.numeric(gsub('age', '', suitability$age))
-    }
-  } else if (any(grepl('detail_(.+)__suit_', names(tmp)))){
-
-    suitability <-
-      tmp[grep('detail_(.+)__suit_', names(tmp))] %>%
-      purrr::map(as.data.frame.table, stringsAsFactors = F) %>%
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(stock = gsub('detail_(.+)__suit_(.+)$', '\\1', .data$comp),
-                    fleet = gsub('detail_(.+)__suit_(.+)$', '\\2', .data$comp)) %>% 
-                    #area = as.numeric(.data$area)) %>%
-                    #length = gsub('len','', .data$length) %>% as.numeric(),
-                    #age = gsub('age','', .data$age) %>% as.numeric()) %>%
-      split_length() %>%
-      dplyr::group_by(.data$stock, .data$fleet) %>% 
-      dplyr::group_modify(~replace_inf(.x)) %>% 
-      dplyr::ungroup() %>%
-      extract_year_step() %>%
-      dplyr::rename(suit = .data$Freq) %>%
-      dplyr::select(.data$stock, .data$fleet, 
-                    dplyr::matches("year|step|area|age|length|predator_length"),
-                    .data$suit) %>%
-      tibble::as_tibble()
-
-  }else{
-    warning("Cannot find suitability tables, no suitability data will be included in results")
-    suitability <- data.frame(
-      stock = "x",
-      fleet = "x",
-      year = 1,
-      step = 1,
-      area = "a",
-      age = 1,
-      length = 1,
-      predator_length = 1,
-      suit = 1 )[c(),,drop = FALSE]
-    }
-  
-  ## --------------------------------------------------------------------------------
+  suitability <- g3f_suitability(tmp, stock_names = sp_names$stocks)
   
   ## Likelihood
   if (any(grepl('^nll_', names(tmp)))){
@@ -330,11 +174,9 @@ g3_fit_inner <- function(tmp,
     likelihood <- NULL
   }
   
-  ## ---------------------------------------------------------------------------
   ## Stock-recruitment
-  ## ---------------------------------------------------------------------------
-  
-  stock.recruitment <- g3f_stock.recruitment(tmp, stock_rec_step)
+  stock.recruitment <- 
+    g3f_stock.recruitment(tmp, stock_rec_step = stock_rec_step)
   
   ## ---------------------------------------------------------------------------
   ## ---------------------------------------------------------------------------
