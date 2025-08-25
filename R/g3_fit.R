@@ -105,15 +105,10 @@ g3_fit_inner <- function(tmp,
   fleet_names <- sp_names$preds[!(sp_names$preds %in% sp_names$stocks)]
   
   ##############################################################################
-  ##############################################################################
   
-  ## --------------------------------------------------------------
   ## Catch distributions
-  ## --------------------------------------------------------------
-  
   catchdist <- g3f_catchdistribution(tmp)
   
-  ## -------------------------------------------------------------------------
   
   ## Sparse distributions
   if (any(grepl('^nll_(a|c)sparse_', names(tmp)))){
@@ -717,7 +712,8 @@ split_age <- function(data){
   return(tmp)
 }
 
-split_length <- function(data, mean_length_col = NULL, replace_inf = FALSE){
+split_length <- function(data){
+  
   if (!('length' %in% names(data))) return(data)
   
   data <- 
@@ -727,30 +723,30 @@ split_length <- function(data, mean_length_col = NULL, replace_inf = FALSE){
       lower = gsub('(.+):(.+)', '\\1', length) |> as.numeric()
     } )
   
-  ## Sort out infinities
-  if (replace_inf){
-    ind <- is.infinite(data$upper)
-    if (any(ind)){
-      replacement <- abs(diff(sort(unique(data$upper[!ind]), decreasing = TRUE)[1:2]))
-      data$upper[ind] <- data$lower[ind] + replacement
-    }  
-  }
-  
-  if (!is.null(mean_length_col)) 
-    data[[mean_length_col]] <- (data$upper + data$lower)/2
-  
   return(data)
   
 }
 
-replace_inf <- function(data){
+replace_inf <- function(data, group_col = NULL){
+  
   if (!('upper' %in% names(data))) return(data)
   
-  ind <- is.infinite(data$upper)
-  if (any(ind)){
-    replacement <- abs(diff(sort(unique(data$upper[!ind]), decreasing = TRUE)[1:2]))
-    data$upper[ind] <- data$lower[ind] + replacement
+  inner_fun <- function(x){
+    ind <- is.infinite(x$upper)
+    if (any(ind)){
+      replacement <- abs(diff(sort(unique(x$upper[!ind]), decreasing = TRUE)[1:2]))
+      if (!is.na(replacement)) x$upper[ind] <- x$lower[ind] + replacement
+    } 
+    return(x)
   }
+  
+  if (is.null(group_col)) return(inner_fun(data))
+  else {
+    return(
+      do.call("rbind", lapply(split(data, data[[group_col]]), FUN = inner_fun))
+    )
+  }
+  
   return(data)
 }
 
@@ -782,4 +778,13 @@ stock_pred_names <- function(reports, stock_names = NULL){
   
   return(list(stocks = stock_names, preds = pred_names))
   
+}
+
+## Helper to add columns
+add_missing_columns <- function(data, columns){
+  
+  for (i in names(columns)){
+    if (!i %in% names(data))  data[[i]] <- columns[[i]]
+  }
+  return(data)
 }

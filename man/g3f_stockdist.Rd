@@ -5,13 +5,19 @@
 \title{Summarises the fit of a gadget3 model to stock distribution taken from landings/samples}
 \usage{
 g3f_stockdist(reports)
+
+g3f_stockdist(reports)
 }
 \arguments{
 \item{reports}{Reported output of a G3 model}
 }
 \value{
 Data frame or NULL
+
+Data frame or NULL
 }
 \description{
+Summarises the fit of a gadget3 model to stock distribution taken from landings/samples
+
 Summarises the fit of a gadget3 model to stock distribution taken from landings/samples
 }

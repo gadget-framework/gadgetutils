@@ -65,7 +65,10 @@ g3f_catchdistribution <- function(reports, by_stock = TRUE, by_fleet = TRUE){
       data$predicted <- data$Freq.model.x / data$Freq.model.y
       data$observed <- data$Freq.obs.x / data$Freq.obs.y
       
-      data <- 
+      data <-
+        data |> 
+        split_length() |> 
+        replace_inf(group_col = c("stock", "stock_re")) |> 
         within(data, {
           stock = gsub("-999", NA_character_, stock);
           stock_re = gsub("-999", NA_character_, stock_re);
@@ -73,7 +76,11 @@ g3f_catchdistribution <- function(reports, by_stock = TRUE, by_fleet = TRUE){
           residuals = ifelse(observed == 0, NA, observed - predicted)
         }) |> 
         extract_year_step() |> 
-        split_length(mean_length_col = "avg.length", replace_inf = TRUE) 
+        identity()
+      
+      if (all(c("upper", "lower") %in% names(data))){
+        data$avg.length <- (data$upper + data$lower)/2
+      }
       
       names(data)[match(c("Freq.model.x", "Freq.obs.x",
                           "Freq.model.y", "Freq.obs.y"), names(data))] <- 
@@ -143,6 +150,83 @@ g3f_catchdist.fleets <- function(reports) g3f_catchdistribution(reports, by_stoc
 #' @return Data frame or NULL
 #' @export
 g3f_stockdist <- function(reports) g3f_catchdistribution(reports, by_fleet = FALSE)$stockdist
+
+#' Summarises the fit of a gadget3 model to stock distribution taken from landings/samples
+#'
+#' @param reports Reported output of a G3 model
+#' @return Data frame or NULL
+#' @export
+g3f_stockdist <- function(reports) g3f_catchdistribution(reports, by_fleet = FALSE)$stockdist
+
+#' Summarises the fit of a gadget3 model to sparse data
+#'
+#' @param reports Reported output of a G3 model
+#' @return Data frame or NULL
+#' @export
+g3f_sparsedata <- function(reports, data_env){
+  
+  ## Sparse distributions
+  if (any(grepl('^nll_(a|c)sparse_', names(reports)))){
+    
+    ## Observed and model search strings
+    sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(area|age|length|year|step|obs_mean|obs_stddev|obs_n)$'
+    sp_re <-     'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(model_sum|model_sqsum|model_n)$'
+    sp_re_all <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(age|length|year|step|obs_mean|obs_stddev|obs_n|model_sum|model_sqsum|model_n)$'
+    
+    ## Observations taken from model environment, model output taken from reports
+    sparse_reports <- 
+      c(mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], envir = data_env),
+        reports[grep(sp_re, names(reports))])
+    
+    sparsedist <- 
+      do.call("rbind",
+              lapply(stats::setNames(names(sparse_reports),
+                                     names(sparse_reports)), function(x){
+                                       out <- data.frame(value = sparse_reports[[x]])
+                                       out$column <- gsub(sp_re_all, "\\4", x)
+                                       out$id <- gsub("__(.+)$", "", x)
+                                       return(out)
+                                     }))
+    
+    
+    sparsedist <- 
+      do.call("rbind",
+              lapply(split(sparsedist, sparsedist$id), function(x){
+                x_re <- "nll_(asparse|csparse)_([A-Za-z]+)_(.+)$"
+                out <- 
+                  utils::unstack(x, "value ~ column") |> 
+                  within( {
+                    component = gsub(x_re, '\\3', unique(x$id));
+                    function_f = gsub(x_re, '\\2', unique(x$id));
+                    data_type = gsub(x_re, '\\1', unique(x$id));
+                    })
+                
+                out <- 
+                  add_missing_columns(
+                    out,
+                    list(year = NA_real_, step = NA_real_, area = NA_character_,
+                         age = NA_integer_, length = NA_real_,
+                         obs_mean = NA_real_, obs_stddev = NA_real_, 
+                         obs_n = NA_real_, model_sum = NA_real_,
+                         model_sqsum = NA_real_, model_n = NA_real_)
+                    )
+                
+                return(out)
+                })
+             )
+      
+    sparsedist$model_mean <- sparsedist$model_sum / sparsedist$model_n
+    row.names(sparsedist) <- 1:nrow(sparsedist)
+    sparsedist <- sparsedist[,c("year","step","area","data_type","function_f",
+                                "component","age","length","obs_mean",
+                                "obs_stddev","obs_n","model_sum",
+                                "model_mean","model_sqsum","model_n")]
+    
+  }else{
+    sparsedist <- NULL
+  }
+  return(sparsedist)
+}
 
 
 #' Summarises the fit of a gadget3 model to survey indices
@@ -230,10 +314,11 @@ g3f_stock.recruitment <- function(reports,
   
   if (any(grepl(sr_str, names(reports)))){
     
+    report_rec_names <- names(reports)[grepl(sr_str, names(reports))]
+    
     stock_rec <- 
       lapply(
-        stats::setNames(names(reports)[grepl(sr_str, names(reports))],
-                        names(reports)[grepl(sr_str, names(reports))]),
+        stats::setNames(report_rec_names, report_rec_names),
         function(x){
           
           ## Note, spawn always enters the youngest age class, but renewal can 
@@ -283,69 +368,81 @@ g3f_stock.recruitment <- function(reports,
   return(rec_out)
 }
 
-g3f_suitability <- function(reports){
+#' Extracts the suitabilities from the reports from a gadget3 model
+#'
+#' @param reports Reported output of a G3 model
+#' @param stock_names Vector of stock names for which the suits will be retrieved. If NULL, all stocks reported will be included.
+#' @return Data frame 
+#' @export
+g3f_suitability <- function(reports, stock_names = NULL){
   
-  suit_str <- 
+  if (is.null(stock_names))
+    stock_names <- stock_pred_names(reports)$stocks 
   
-  ## Suitability
-  if (any(grepl('^suit_(.+)_(.+)__report', names(tmp)))){
+  suit_re <- NA
+  # New-style g3a_suitability_report() output
+  if (any(grepl('^suit_(.+)_(.+)__report$', names(reports)))){
+    
     suit_re <- paste0(
       "^suit",
       "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
       "_(.+)",
       "__report" )
     
-    # New-style g3a_suitability_report() output
+  # Old-style output
+  } else if (any(grepl('detail_(.+)__suit_(.+)$', names(reports)))){
+    
+    suit_re <- paste0(
+      "^detail",
+      "_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)",
+      "__suit",
+      "_(.+)" )
+    
+  }
+    
+  if (!is.na(suit_re)){
+    
+    report_suit_names <- names(reports)[grep(suit_re, names(reports))]
+    
     suitability <-
-      tmp[grep(suit_re, names(tmp))] %>%
-      purrr::map(as.data.frame.table, stringsAsFactors = F, responseName = 'suit') %>%
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(stock = gsub(suit_re, '\\1', .data$comp),
-                    fleet = gsub(suit_re, '\\2', .data$comp)) %>%
-      extract_year_step() %>% 
-      dplyr::select(.data$stock, .data$fleet, 
-                    dplyr::matches("year|step|area|age|length|predator_length"),
-                    .data$suit) %>%
+      do.call("rbind",
+              lapply(
+                stats::setNames(report_suit_names, report_suit_names),
+                function(x){
+                  out <- as.data.frame.table(reports[[x]], 
+                                             stringsAsFactors = FALSE,
+                                             responseName = "suit")
+                  out$report_name <- x
+                  return(out)
+                }
+              ))
+    
+    suitability <- 
+      within(suitability, {
+        stock = gsub(suit_re, "\\1", report_name);
+        fleet = gsub(suit_re, "\\2", report_name)
+      }) |> 
+      extract_year_step() |> 
+      split_length() |> 
+      replace_inf(group_col = "stock") |> 
       identity()
     
-    # Fix length and age if present
-    if ('length' %in% names(suitability)){
-      suitability <-
-        suitability %>% 
-        split_length() %>%
-        dplyr::group_by(.data$stock, .data$fleet) %>% 
-        dplyr::group_modify(~replace_inf(.x)) %>% 
-        dplyr::ungroup() %>%
-        dplyr::mutate(length = (.data$upper + .data$lower)/2) %>% 
-        dplyr::select(-c(.data$lower, .data$upper))
+    if (all(c("upper", "lower") %in% names(suitability))){
+      suitability$length <- (suitability$upper + suitability$lower)/2
     }
     
     if ('age' %in% names(suitability)){
       suitability$age <- as.numeric(gsub('age', '', suitability$age))
     }
-  } else if (any(grepl('detail_(.+)__suit_', names(tmp)))){
     
-    suitability <-
-      tmp[grep('detail_(.+)__suit_', names(tmp))] %>%
-      purrr::map(as.data.frame.table, stringsAsFactors = F) %>%
-      dplyr::bind_rows(.id = 'comp') %>%
-      dplyr::mutate(stock = gsub('detail_(.+)__suit_(.+)$', '\\1', .data$comp),
-                    fleet = gsub('detail_(.+)__suit_(.+)$', '\\2', .data$comp)) %>% 
-      #area = as.numeric(.data$area)) %>%
-      #length = gsub('len','', .data$length) %>% as.numeric(),
-      #age = gsub('age','', .data$age) %>% as.numeric()) %>%
-      split_length() %>%
-      dplyr::group_by(.data$stock, .data$fleet) %>% 
-      dplyr::group_modify(~replace_inf(.x)) %>% 
-      dplyr::ungroup() %>%
-      extract_year_step() %>%
-      dplyr::rename(suit = .data$Freq) %>%
-      dplyr::select(.data$stock, .data$fleet, 
-                    dplyr::matches("year|step|area|age|length|predator_length"),
-                    .data$suit) %>%
-      tibble::as_tibble()
+    row.names(suitability) <- 1:nrow(suitability)
     
-  }else{
+    suit_cols <- c("year","step","area","stock","fleet",
+                   "predator_length","length","age","suit")
+    
+    suitability <- suitability[, intersect(suit_cols, names(suitability))]
+    
+  } else {
     warning("Cannot find suitability tables, no suitability data will be included in results")
     suitability <- data.frame(
       stock = "x",
@@ -357,6 +454,8 @@ g3f_suitability <- function(reports){
       length = 1,
       predator_length = 1,
       suit = 1 )[c(),,drop = FALSE]
+    
   }
-  
+  return(suitability)
 }
+
