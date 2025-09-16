@@ -18,7 +18,7 @@ g3_data(
 
 \item{params}{A list of parameters defining the grouping. See details in \code{mfdb_sample_count}.}
 
-\item{method}{A character defining the aggregation method: use \code{"count"} to count occurrences or \strong{name of the column} that should be summarized in \code{x} based on grouping defined by \code{params}.}
+\item{method}{A character defining the aggregation method: use \code{"count"} to count occurrences or \strong{name of the column} that should be summarized in \code{x} based on grouping defined by \code{params}. In other cases, use the column name that should be aggregated. The column will be summed based on year, step, area, and any additional columns defined in \code{params}.}
 
 \item{column_names}{A named vector explaining the column names which gadget3 expects in \code{x} if not the same than in mfdb. See the default suggestion for example.}
 

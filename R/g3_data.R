@@ -2,7 +2,7 @@
 #' @description Aggregates data from a data frame ready to be passed to gadget3. Useful for generating datasets for \code{g3l_catchdistribution}, \code{g3l_abundancedistribution} and \code{g3_timeareadata}. Imitates the behavior of \code{mfdb_sample_*} functions and returns the required object attributes as instructed by the \code{params} argument.
 #' @param x A data frame, tibble or data table
 #' @param params A list of parameters defining the grouping. See details in \code{mfdb_sample_count}.
-#' @param method A character defining the aggregation method: use \code{"count"} to count occurrences or \strong{name of the column} that should be summarized in \code{x} based on grouping defined by \code{params}.
+#' @param method A character defining the aggregation method: use \code{"count"} to count occurrences or \strong{name of the column} that should be summarized in \code{x} based on grouping defined by \code{params}. In other cases, use the column name that should be aggregated. The column will be summed based on year, step, area, and any additional columns defined in \code{params}.
 #' @param column_names A named vector explaining the column names which gadget3 expects in \code{x} if not the same than in mfdb. See the default suggestion for example.
 #' @param floating_point_correction Logical indicating whether 1e-6 should be added to all numeric columns except for \code{year} and \code{step}. Corrects for floating point issues associated with certain numbers such as 28 and 57.
 #' @param verbose Logical indicating whether the function should return messages about potential assumptions when expected data are not specified.
