@@ -377,7 +377,7 @@ g3_fit_inner <- function(tmp,
         dplyr::ungroup() %>%
         dplyr::mutate(length = (.data$upper + .data$lower)/2) %>% 
         dplyr::select(-c(.data$lower, .data$upper))
-    }
+    } 
     
     if ('age' %in% names(suitability)){
       suitability$age <- as.numeric(gsub('age', '', suitability$age))
@@ -650,11 +650,11 @@ g3_fit_inner <- function(tmp,
     predator.prey <- 
       lapply(split(fleet_reports, list(fleet_reports$stock, fleet_reports$fleet)), function(x, suits){
       if (nrow(x) == 0) return(NULL)
+        if ("length" %in% names(suits)) suits <- suits %>% rename(avg.length = length)
         suppressMessages(
           x %>% 
             dplyr::left_join(
               suits %>% 
-                dplyr::rename(avg.length = length) %>% 
                 dplyr::filter(.data$stock %in% unique(x$stock),
                               .data$fleet %in% unique(x$fleet)) %>% 
                 dplyr::select(dplyr::where(not_all_na))
