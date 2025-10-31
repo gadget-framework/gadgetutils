@@ -68,15 +68,20 @@ g3f_catchdistribution <- function(reports, by_stock = TRUE, by_fleet = TRUE){
       data <-
         data |> 
         split_length() |> 
-        replace_inf(group_col = c("stock", "stock_re")) |> 
+        replace_inf(group_col = c("stock")) |> 
         within(data, {
           stock = gsub("-999", NA_character_, stock);
           stock_re = gsub("-999", NA_character_, stock_re);
-          predator_length = gsub("-999", NA_character_, predator_length);
-          residuals = ifelse(observed == 0, NA, observed - predicted)
+          predator_length = gsub("-999", NA_character_, predator_length)
+          #residuals = ifelse(observed == 0, NA_real_, observed - predicted)
         }) |> 
         extract_year_step() |> 
         identity()
+      
+      ## Noting working inside "within" for some reason...
+      data$residuals <- ifelse(data$observed == 0, 
+                               NA_real_, 
+                               data$observed - data$predicted)
       
       if (all(c("upper", "lower") %in% names(data))){
         data$avg.length <- (data$upper + data$lower)/2
@@ -143,13 +148,6 @@ g3f_catchdistribution <- function(reports, by_stock = TRUE, by_fleet = TRUE){
 #' @return Data frame or NULL
 #' @export
 g3f_catchdist.fleets <- function(reports) g3f_catchdistribution(reports, by_stock = FALSE)$catchdist.fleets
-
-#' Summarises the fit of a gadget3 model to stock distribution taken from landings/samples
-#'
-#' @param reports Reported output of a G3 model
-#' @return Data frame or NULL
-#' @export
-g3f_stockdist <- function(reports) g3f_catchdistribution(reports, by_fleet = FALSE)$stockdist
 
 #' Summarises the fit of a gadget3 model to stock distribution taken from landings/samples
 #'
@@ -457,5 +455,141 @@ g3f_suitability <- function(reports, stock_names = NULL){
     
   }
   return(suitability)
+}
+
+g3f_likelihood <- function(reports, data_env = NULL, params = NULL){
+  
+  lik_re <- "^nll_(adist|cdist)_([A-Za-z]+)_(.+)__"
+  
+  ## Likelihood
+  if (any(grepl(lik_re, names(reports)))){
+    
+    lik_keys <- grep(paste0(lik_re, "(wgt|num)$"), names(reports), value = TRUE) 
+    
+    lik_vals <- 
+      do.call("rbind", 
+              lapply(stats::setNames(lik_keys, lik_keys), function(x){
+                  as.data.frame.table(reports[[x]], 
+                                      stringsAsFactors = FALSE, 
+                                      responseName = "value") |> 
+                  within( {
+                    measurement = gsub(lik_re, "\\4", x);
+                    id = gsub("(wgt|num)$", "", x)
+                  } ) |> 
+                  identity()
+              }))
+      
+    lik_keys <- grep(paste0(lik_re, "weight$"), names(reports), value = TRUE)
+    
+    lik_vals <- 
+      merge(x = lik_vals,
+            y = do.call("rbind", 
+                        lapply(stats::setNames(lik_keys, lik_keys), function(x){
+                          as.data.frame.table(reports[[x]], 
+                                              stringsAsFactors = FALSE, 
+                                              responseName = "weight") |> 
+                            within( {
+                              id = gsub("weight$", "", x)
+                            }) |> 
+                            identity()
+                        })),
+            by = c("time", "id"))
+    
+    lik_vals <- 
+      lik_vals |> 
+      within( {
+        component = gsub(lik_re, "\\3", id);
+        data_type = gsub(lik_re, "\\1_\\2", id)
+      } )
+    
+    likelihood <-
+      lik_vals[,names(lik_vals) != "id"] |> 
+      rbind(
+        reports$nll_understocking__wgt |> 
+          as.data.frame.table(stringsAsFactors = FALSE,
+                              responseName = "value") |> 
+          within( {
+            component = "understocking";
+            data_type = "model_preystocks";
+            measurement = "wgt"
+            weight = NA_real_  ## NEED TO ADD THIS TO REPORTING
+          } )
+      ) |> 
+      extract_year_step()
+      
+    
+    ## Sparse data
+    if (any(grepl('^nll_(a|c)sparse_', names(reports)))){
+      
+      if (is.null(data_env) || is.null(params)){
+        
+        warning("The sparse distribution likelihood cannot be compiled without the data_env and params arguments")
+        sp_data <- NULL
+        
+      } else {
+      
+        sp_re_obs <- 'nll_(asparse|csparse)_([A-Za-z]+)_(.+)__(year|step)$'
+        
+        ## Observations taken from model environment, model output taken from reports
+        sparse_reports <- mget(ls(data_env)[grep(sp_re_obs, ls(data_env))], 
+                               envir = data_env)
+        
+        ## Year and steps for each component
+        sp_data <- 
+          do.call("rbind",
+                  lapply(stats::setNames(names(sparse_reports),
+                                         names(sparse_reports)), function(x){
+                                           out <- data.frame(value = sparse_reports[[x]])
+                                           out$column <- gsub(sp_re_obs, "\\4", x)
+                                           out$id <- gsub("__(.+)$", "", x)
+                                           return(out)
+                                         }))
+        
+        ## NLL for each component
+        sp_data <- 
+          do.call("rbind",
+                  lapply(split(sp_data, sp_data$id), function(x){
+                    x_re <- "nll_(asparse|csparse)_([A-Za-z]+)_(.+)$"
+                    out <- 
+                      utils::unstack(x, "value ~ column") |> 
+                      within( {
+                        component = gsub(x_re, '\\3', unique(x$id));
+                        data_type = gsub(x_re, '\\1_\\2', unique(x$id));
+                        value = 0;
+                        weight = 0;
+                        measurement = NA_character_
+                      })
+                    
+                    ## Now add in the NLL
+                    nll_re <- paste0(unique(x$id), "__nll")
+                    par_re <- paste0(gsub("^nll_", "", unique(x$id)), "_weight")
+                    
+                    ## If linear regression, append to final timestep
+                    if (grepl("_linreg_", nll_re)){
+                      out$value[nrow(out)] <- reports[[nll_re]][["nll"]]
+                      out$weight[nrow(out)] <- params$value[[par_re]]
+                      out <- out[nrow(out),]
+                    } else {
+                      out$value <- reports[[nll_re]]
+                      out$weight <- params$value[[par_re]]
+                    }
+                    
+                    return(out)
+                  })
+          )
+          
+      }
+      likelihood <- likelihood |> rbind(sp_data)
+    }
+    
+    likelihood <- likelihood[order(likelihood$component),
+                             c("year", "step", "component", 
+                               "data_type", "measurement", "weight", 
+                               "value")]
+    
+    return(likelihood)
+    
+  }else 
+    return(NULL) 
 }
 

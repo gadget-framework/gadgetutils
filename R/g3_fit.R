@@ -119,66 +119,12 @@ g3_fit_inner <- function(tmp,
   suitability <- g3f_suitability(tmp, stock_names = sp_names$stocks)
   
   ## Likelihood
-  if (any(grepl('^nll_', names(tmp)))){
-    
-    likelihood <-
-      ## Catch and abundance distributions values
-      tmp[grep('^nll_(a|c)dist_(.+)__(wgt$|num$)', names(tmp))] %>%
-      purrr::map(~tibble::tibble(time=names(.), value = as.numeric(.))) %>% 
-      dplyr::bind_rows(.id='lik_comp') %>% 
-      dplyr::mutate(measurement = gsub('.+(wgt|num)','\\1', .data$lik_comp),
-                    component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\3', .data$lik_comp),
-                    data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>% 
-      dplyr::select(-.data$lik_comp) %>% 
-      dplyr::left_join(
-        tmp[grep('^nll_(a|c)dist_(.+)__weight$', names(tmp))] %>%
-          purrr::map(~tibble::tibble(time=names(.), weight = as.numeric(.))) %>% 
-          dplyr::bind_rows(.id='lik_comp') %>% 
-          dplyr::mutate(component = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\3', .data$lik_comp),
-                        data_type = gsub('nll_(cdist|adist)_([A-Za-z]+)_(.+)__(wgt$|num$|weight$)', '\\1_\\2', .data$lik_comp)) %>% 
-          dplyr::select(-.data$lik_comp),
-      by = c('component', 'data_type', 'time')) %>% 
-      ## Understocking
-      dplyr::bind_rows(
-        tmp[grep('^nll_understocking', names(tmp))] %>%
-          purrr::map(~tibble::tibble(time=names(.), value = as.numeric(.))) %>% 
-          dplyr::bind_rows(.id='lik_comp') %>% 
-          dplyr::mutate(component = 'understocking',
-                        data_type = 'model_preystocks',
-                        measurement = 'wgt') %>% 
-          dplyr::select(-.data$lik_comp) 
-      ) %>% 
-      extract_year_step() %>% 
-      dplyr::select(.data$year, .data$step, .data$component, .data$data_type, 
-                    .data$measurement, .data$weight, .data$value)
-    
-    ## Sparse data
-    if (!is.null(sparsedist)){
-      likelihood <-
-        likelihood %>% 
-        dplyr::bind_rows(
-          sparsedist %>% 
-            dplyr::group_by(.data$year, .data$step, .data$component, 
-                            .data$function_f, .data$data_type, .data$weight) %>% 
-            dplyr::summarise(value = sum(.data$nll), .groups = 'drop') %>% 
-            dplyr::mutate(data_type = paste(.data$data_type, 
-                                            .data$function_f, sep = '_'),
-                          measurement = '') %>% 
-            dplyr::select(.data$year, .data$step, .data$measurement, 
-                          .data$component, .data$data_type, .data$weight, 
-                          .data$value)  
-        )
-      sparsedist <- sparsedist %>% dplyr::select(-c(.data$weight, .data$nll))
-    }
-  }else{
-    likelihood <- NULL
-  }
+  likelihood <- g3f_likelihood(reports, data_env = data_env, params = params)
   
   ## Stock-recruitment
   stock.recruitment <- 
     g3f_stock.recruitment(tmp, stock_rec_step = stock_rec_step)
   
-  ## ---------------------------------------------------------------------------
   ## ---------------------------------------------------------------------------
   
   ## Stock reports
