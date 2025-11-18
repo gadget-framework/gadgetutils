@@ -75,7 +75,7 @@
 #' @export
 g3_iterative <- function(gd, wgts = 'WGTS',
                           model, params.in, 
-                          grouping = list(),
+                          grouping = g3_iterative_default_grouping(params.in),
                           use_parscale = TRUE,
                           method = 'BFGS',
                           control = list(),
@@ -372,6 +372,54 @@ g3_iterative <- function(gd, wgts = 'WGTS',
   }
   save(params_final, file = file.path(out_path, 'params_final.Rdata'))
   return(params_final)  
+}
+
+# Generate default grouping, combine all fleet likelihoods into one group
+# NB: For this to work, nll_names need to be in the form (nll_source)_(nll_dist), where (nll_dist) matches one of the (nll_dist_names)
+#' @param params.in Initial parameters to use with the model
+#' @param nll_dist_names Character vector of postfixes to consider when looking for groupings
+#' @return
+#' \subsection{g3_iterative_default_grouping}{
+#' A list of component groups to component names, as required by the \var{grouping} parameter
+#' }
+#' @details
+#' \subsection{g3_iterative_default_grouping}{
+#' This assumes that your likelihood component names are of the form ``(nll_group)_(nll_dist)``,
+#' where ``(nll_dist)`` matches one of the regexes in \var{nll_dist_names}.
+#' For example, ``afleet_ldist``, ``afleet_aldist``, ``bfleet_ldist``. ``afleet`` & ``bfleet`` will be the groups used.
+#' }
+#' @rdname g3_iterative
+#' @export
+g3_iterative_default_grouping <- function (params.in, nll_dist_names = c("ldist", "aldist", "matp", "sexdist", "SI", "len\\d+SI")) {
+  # Extract all likelihood component weight names from params.in
+  weight_re <- paste0(
+    "^",
+    "(?<dist>.dist|.sparse)_",
+    "(?<function>surveyindices_log|[a-z]+)_",
+    "(?<nll_source>.+)_",
+    "(?<nll_dist>", paste0(nll_dist_names, collapse = "|"), ")_",
+    "weight$"
+  )
+
+  # Break up names into a data.frame of param_name -> regex groups
+  weight_names <- grep(weight_re, rownames(params.in), value = TRUE, perl = TRUE)
+  weight_parts <- as.data.frame(do.call(rbind, regmatches(weight_names, regexec(weight_re, weight_names, perl = TRUE))))
+  names(weight_parts)[[1]] <- "param_name"
+  weight_parts$value <- params.in[weight_parts$param_name, "value"]
+
+  # Remove any zero-weighted parameters
+  zero_value <- weight_parts[weight_parts$value == 0, "param_name"]
+  if (length(zero_value) > 0) {
+    warning("Parameters ", paste(zero_value, collapse = ", ") , " have a value of 0, removing from grouping")
+    weight_parts <- weight_parts[weight_parts$value > 0,]
+  }
+
+  # Group rows together into a list of nll_source -> vector of (nll_source)_(nll_dist)
+  sapply(
+    unique(weight_parts$nll_source),
+    function (nll_source) paste0(nll_source, "_", weight_parts[weight_parts$nll_source == nll_source, "nll_dist"]),
+    simplify = FALSE
+  )
 }
 
 #' @title Initial parameters for iterative re-weighting

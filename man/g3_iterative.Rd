@@ -2,6 +2,7 @@
 % Please edit documentation in R/g3_iterative.R
 \name{g3_iterative}
 \alias{g3_iterative}
+\alias{g3_iterative_default_grouping}
 \title{Iterative re-weighting}
 \usage{
 g3_iterative(
@@ -9,7 +10,7 @@ g3_iterative(
   wgts = "WGTS",
   model,
   params.in,
-  grouping = list(),
+  grouping = g3_iterative_default_grouping(params.in),
   use_parscale = TRUE,
   method = "BFGS",
   control = list(),
@@ -18,6 +19,11 @@ g3_iterative(
   resume_final = FALSE,
   serial_compile = FALSE,
   mc.cores = parallel::detectCores()
+)
+
+g3_iterative_default_grouping(
+  params.in,
+  nll_dist_names = c("ldist", "aldist", "matp", "sexdist", "SI", "len\\\\d+SI")
 )
 }
 \arguments{
@@ -46,9 +52,15 @@ g3_iterative(
 \item{serial_compile}{g3_tmb_adfun will be run in serial mode (i.e., not in parallel), potentially helping with memory issues}
 
 \item{mc.cores}{number of cores used, defaults to the number of available cores}
+
+\item{nll_dist_names}{Character vector of postfixes to consider when looking for groupings}
 }
 \value{
 Final set of parameters
+
+\subsection{g3_iterative_default_grouping}{
+A list of component groups to component names, as required by the \var{grouping} parameter
+}
 }
 \description{
 Perform multiple optimisation runs of a model, reweighting with each run
@@ -109,4 +121,10 @@ cv_floor setting. The cv_floor parameter sets the minimum of the estimated compo
 variance and thus the maximum of the inverser variance.
 
 Weights are calculated using inverse-variance weighting (\eqn{1/\sigma^2}), and as \code{1/pmax(variance, cv_floor)}, hence the minimum value for survey components is 1/\code{cv_floor}. Use smaller \code{cv_floor} values to increase the weight of survey components.
+
+\subsection{g3_iterative_default_grouping}{
+This assumes that your likelihood component names are of the form \verb{(nll_group)_(nll_dist)},
+where \code{(nll_dist)} matches one of the regexes in \var{nll_dist_names}.
+For example, \code{afleet_ldist}, \code{afleet_aldist}, \code{bfleet_ldist}. \code{afleet} & \code{bfleet} will be the groups used.
+}
 }
