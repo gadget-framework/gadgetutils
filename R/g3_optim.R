@@ -99,6 +99,7 @@ g3_optim <- function(model,
   
   ## Run optimiser
   if (print_status) echo_message('##  Running optimisation', print_id)
+  t_start <- proc.time()
   fit_opt <- try({
     
     optim(par = obj_fun$par, fn = obj_fun$fn, gr = obj_fun$gr,
@@ -107,6 +108,7 @@ g3_optim <- function(model,
           control = control)
     
   }, silent = FALSE)
+  wallclock_s <- (proc.time() - t_start)[["elapsed"]]
   
   ## Check whether the optimisation crashed
   if (inherits(fit_opt, 'try-error')){
@@ -166,6 +168,7 @@ g3_optim <- function(model,
                convergence = ifelse(model.opt.fail, NA, 
                                     ifelse(fit_opt$convergence == 0, TRUE, FALSE)),
                score = fit_opt$value,
+               wallclock_s = wallclock_s,
                return_complete = '',
                comment = ''
                )
