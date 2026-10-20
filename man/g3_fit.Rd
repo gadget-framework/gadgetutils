@@ -4,21 +4,24 @@
 \alias{g3_fit}
 \title{Build output summary suitable for feeding into gadgetplots}
 \usage{
-g3_fit(model, params, stock_rec_step = NULL, steps = 1, printatstart = 1)
+g3_fit(model, params, rec_step = 1, steps = 1)
 }
 \arguments{
 \item{model}{A G3 model built using \code{\link[gadget3]{g3_to_r}} or \code{\link[gadget3]{g3_to_tmb}}. The model must include \code{\link[gadget3]{g3a_report_detail}}.}
 
 \item{params}{The fitted parameters post-optimisation}
 
-\item{stock_rec_step}{Named list where each element contains the step(s) for a specific stock (name of the element). E.g. list(bli_imm = 1, bli_dummy = 2). If NULL or a stock is not included/misspelled, all steps are returned.}
+\item{rec_step}{The step(s) in which recruitment occurs. The renewal and spawning reports are not reset to zero in the steps following a recruitment event, so only the recruitment steps should be included. Either:
+\itemize{
+\item a vector of steps applied to all stocks, e.g. \code{rec_step = 2} or \code{rec_step = 1:4};
+\item a named list of steps for specific stocks (the names of the list), e.g. \code{rec_step = list(imm1 = 1, imm2 = 1:2)}. All steps are returned for stocks not included in the list;
+\item NULL, all steps are returned for all stocks.
+}}
 
 \item{steps}{Which steps to include in the annual output? Vector of int.}
-
-\item{printatstart}{Should the stock standard be printed at the start of the timestep (1) or the end (0)}
 }
 \value{
-List of tibbles
+List of data frames
 }
 \description{
 Build output summary suitable for feeding into gadgetplots

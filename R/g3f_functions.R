@@ -302,50 +302,60 @@ g3f_sidat <- function(reports){
 #' Summarises the renewal and spawning reports for a gadget 3 model
 #'
 #' @param reports Reported output of a G3 model
-#' @param stock_rec_step Named list where each element contains the step(s) for a specific stock (name of the element). E.g. list(bli_imm = 1, bli_dummy = 2). If NULL or a stock is not included/misspelled, all steps are returned.  
+#' @param rec_step The step(s) in which recruitment occurs. The renewal and spawning reports are not reset to zero in the steps following a recruitment event, so only the recruitment steps should be included. Either:
+#'   \itemize{
+#'     \item a vector of steps applied to all stocks, e.g. \code{rec_step = 2} or \code{rec_step = 1:4};
+#'     \item a named list of steps for specific stocks (the names of the list), e.g. \code{rec_step = list(imm1 = 1, imm2 = 1:2)}. All steps are returned for stocks not included in the list;
+#'     \item NULL, all steps are returned for all stocks.
+#'   }
 #' @return Data frame or NULL
 #' @export
 g3f_stock.recruitment <- function(reports,
-                                  stock_rec_step = NULL){
-  
+                                  rec_step = 1){
+
   sr_str <- 'detail_(.+)__(spawnednum|renewalnum)$'
-  
+
+  if (!(is.null(rec_step) || is.numeric(rec_step) ||
+        (is.list(rec_step) && !is.null(names(rec_step)) && all(names(rec_step) != "")))){
+    stop("rec_step must be NULL, a vector of steps or a named list of steps for each stock")
+  }
+
   if (any(grepl(sr_str, names(reports)))){
-    
+
     report_rec_names <- names(reports)[grepl(sr_str, names(reports))]
-    
-    stock_rec <- 
+
+    if (is.list(rec_step)){
+      missing_stocks <- setdiff(names(rec_step), gsub(sr_str, "\\1", report_rec_names))
+      if (length(missing_stocks) > 0){
+        warning("No renewal or spawning reports found for the following stocks in rec_step: ",
+                paste(missing_stocks, collapse = ", "))
+      }
+    }
+
+    stock_rec <-
       lapply(
         stats::setNames(report_rec_names, report_rec_names),
         function(x){
-          
-          ## Note, spawn always enters the youngest age class, but renewal can 
-          ## enter any (i think) therefore filter out all age classes with 
+
+          ## Note, spawn always enters the youngest age class, but renewal can
+          ## enter any (i think) therefore filter out all age classes with
           ## 0 numbers summed across years... seems more robust than just
           ## filtering out zeros
-          age_ind <- which(g3_array_agg(reports[[x]],
-                                        agg = "sum",
-                                        margins = "age") > 0)
-          
+          age_ind <- which(gadget3::g3_array_agg(reports[[x]],
+                                                 agg = "sum",
+                                                 margins = "age") > 0)
+
           if (length(age_ind) == 0) return(NULL)
-          
-          ## Were renewal/spawning steps specified?
-          ## If yes
-          if (gsub(sr_str, "\\1", x) %in% names(stock_rec_step)){
-            out <- gadget3::g3_array_agg(reports[[x]], 
-                                         agg = "sum", 
-                                         margins = c("year", "step", "area", "age"), 
-                                         step = stock_rec_step[[gsub(sr_str, "\\1", x)]],
-                                         age = names(age_ind))  
-          }else{
-            ## If no
-            out <- gadget3::g3_array_agg(reports[[x]], 
-                                         agg = "sum", 
-                                         margins = c("year", "step", "area", "age"),
-                                         age = names(age_ind))
-          }
-          
-          out |> 
+
+          ## Recruitment steps for this stock (NULL for all steps)
+          steps <- if (is.list(rec_step)) rec_step[[gsub(sr_str, "\\1", x)]] else rec_step
+
+          out <- gadget3::g3_array_agg(reports[[x]],
+                                       agg = "sum",
+                                       margins = c("year", "step", "area", "age"),
+                                       age = names(age_ind))
+
+          out |>
             as.data.frame.table(stringsAsFactors = FALSE, responseName = "recruitment") |> 
             within({
               stock = gsub(sr_str, '\\1', x);
@@ -353,13 +363,15 @@ g3f_stock.recruitment <- function(reports,
               year = as.numeric(year);
               step = as.numeric(step)
             }) -> out
-          
+
+          if (!is.null(steps)) out <- out[out$step %in% steps, ]
+
           return(out[,c("stock", "year", "step", "area", "age", "recruitment")])
           
         })
     
     rec_out <- do.call("rbind", stock_rec)
-    row.names(rec_out) <- 1:nrow(rec_out)
+    if (!is.null(rec_out)) row.names(rec_out) <- NULL
     
   }else rec_out <- NULL
 
@@ -457,6 +469,13 @@ g3f_suitability <- function(reports, stock_names = NULL){
   return(suitability)
 }
 
+#' Summarises the likelihood components of a gadget3 model by year and step
+#'
+#' @param reports Reported output of a G3 model
+#' @param data_env The model data environment, e.g. \code{environment(model)} for an R model. Required for sparse data likelihood components.
+#' @param params The model parameters (data frame with a 'value' column). Required for the weights of sparse data likelihood components.
+#' @return Data frame or NULL. One row per likelihood component, year and step, containing the unweighted negative log-likelihood ('value') and the component weight.
+#' @export
 g3f_likelihood <- function(reports, data_env = NULL, params = NULL){
   
   lik_re <- "^nll_(adist|cdist)_([A-Za-z]+)_(.+)__"
@@ -593,3 +612,456 @@ g3f_likelihood <- function(reports, data_env = NULL, params = NULL){
     return(NULL) 
 }
 
+#' Collates the abundance and mean weight reports for each stock in a gadget3 model
+#'
+#' @param reports Reported output of a G3 model
+#' @return Data frame or NULL. One row per stock, year, step, area, age and length group, containing the abundance and mean weight.
+#' @export
+g3f_stock_reports <- function(reports){
+  
+  sr_re <- "^(dstart|detail)_(.+)__(num|wgt)$"
+  
+  if (!any(grepl(sr_re, names(reports)))) return(NULL)
+  
+  num_reports <- reports_to_df(reports, 
+                               re = "^(dstart|detail)_(.+)__num$",
+                               responseName = "abundance",
+                               labels = c(stock = "\\2"))
+  
+  wgt_reports <- reports_to_df(reports, 
+                               re = "^(dstart|detail)_(.+)__wgt$",
+                               responseName = "weight",
+                               labels = c(stock = "\\2"))
+  
+  stock_reports <- 
+    merge(x = num_reports,
+          y = wgt_reports,
+          by = setdiff(intersect(names(num_reports), names(wgt_reports)), 
+                       c("abundance", "weight")),
+          all.x = TRUE) |> 
+    tidy_stock_reports()
+  
+  cols <- c("year", "step", "area", "stock", "age", 
+            "length", "lower", "upper", "avg.length", 
+            "abundance", "weight")
+  
+  return(
+    order_by(stock_reports[intersect(cols, names(stock_reports))],
+             c("stock", "year", "step", "area", "age", "lower"))
+  )
+}
+
+#' Collates the consumption of each stock by each predator (fleets and predator stocks) in a gadget3 model
+#'
+#' @param reports Reported output of a G3 model
+#' @param stock_names Vector of (prey) stock names. If NULL, all stocks reported will be included.
+#' @return Data frame or NULL. One row per prey stock, predator (column 'fleet'), year, step, area, age and length group (and predator length/age for predator stocks), containing the biomass and numbers consumed and the mean weight of the prey.
+#' @export
+g3f_fleet_reports <- function(reports, stock_names = NULL){
+  
+  if (is.null(stock_names))
+    stock_names <- stock_pred_names(reports)$stocks
+  
+  stock_re <- paste0("_(\\Q", paste(stock_names, collapse = "\\E|\\Q"), "\\E)")
+  
+  if (any(grepl("__cons$", names(reports)))){
+    # detail_(prey)_(pred)__cons arrays
+    consumption_re <- paste0("^detail", stock_re, "_(.+)__cons$")
+  } else {
+    # Pre-predation stype __predby_ arrays
+    consumption_re <- paste0("^detail", stock_re, "__predby_(.+)$")
+  }
+  
+  if (!any(grepl(consumption_re, names(reports)))) return(NULL)
+  
+  cons_reports <- reports_to_df(reports, 
+                                re = consumption_re,
+                                responseName = "biomass_consumed",
+                                labels = c(stock = "\\1", fleet = "\\2"))
+  
+  wgt_reports <- reports_to_df(reports, 
+                               re = paste0("^(dstart|detail)", stock_re, "__wgt$"),
+                               responseName = "weight",
+                               labels = c(stock = "\\2"))
+  
+  fleet_reports <- 
+    merge(x = cons_reports,
+          y = wgt_reports,
+          by = setdiff(intersect(names(cons_reports), names(wgt_reports)), 
+                       c("biomass_consumed", "weight")),
+          all.x = TRUE) |> 
+    tidy_stock_reports()
+  
+  fleet_reports$number_consumed <- 
+    ifelse(fleet_reports$biomass_consumed == 0, 
+           0, 
+           fleet_reports$biomass_consumed / fleet_reports$weight)
+  
+  if ("predator_age" %in% names(fleet_reports)){
+    fleet_reports$predator_age <- as.numeric(gsub("age", "", fleet_reports$predator_age))
+  }
+  
+  cols <- c("year", "step", "area", "stock", "fleet", "age", 
+            "length", "lower", "upper", "avg.length", 
+            "predator_length", "predator_age", 
+            "biomass_consumed", "number_consumed", "weight")
+  
+  return(
+    order_by(fleet_reports[intersect(cols, names(fleet_reports))],
+             c("stock", "fleet", "year", "step", "area", "age", "lower"))
+  )
+}
+
+## Common processing of stock and fleet reports: length groups, year/step and age
+tidy_stock_reports <- function(data){
+  
+  data <- 
+    data |> 
+    split_length() |> 
+    replace_inf(group_col = "stock") |> 
+    extract_year_step()
+  
+  if (all(c("upper", "lower") %in% names(data))){
+    data$avg.length <- (data$lower + data$upper)/2
+  }
+  
+  if ("age" %in% names(data)){
+    data$age <- as.numeric(gsub("age", "", data$age))
+  }
+  
+  return(data)
+}
+
+#' Summarises the abundance and mean weight of each stock by length group
+#'
+#' @param reports Reported output of a G3 model
+#' @param stock_reports Output of \code{\link{g3f_stock_reports}}
+#' @return Data frame or NULL
+#' @export
+g3f_stock.full <- function(reports, 
+                           stock_reports = g3f_stock_reports(reports)){
+  
+  if (is.null(stock_reports)) return(NULL)
+  
+  stock_reports$biomass <- stock_reports$abundance * stock_reports$weight
+  
+  stock_full <- 
+    aggregate_by(stock_reports, 
+                 by = c("year", "step", "area", "stock", "avg.length"), 
+                 cols = c("abundance", "biomass"))
+  
+  stock_full$mean_weight <- stock_full$biomass / stock_full$abundance
+  stock_full$mean_weight[is.na(stock_full$mean_weight)] <- 0
+  
+  names(stock_full)[match(c("avg.length", "abundance"), names(stock_full))] <- 
+    c("length", "number")
+  
+  return(
+    order_by(stock_full[intersect(c("year", "step", "area", "stock", 
+                                     "length", "number", "mean_weight"),
+                                   names(stock_full))],
+             c("year", "step", "area", "stock", "length"))
+  )
+}
+
+#' Summarises the abundance, length and weight of each stock by age
+#'
+#' @param reports Reported output of a G3 model
+#' @param stock_reports Output of \code{\link{g3f_stock_reports}}
+#' @return Data frame or NULL
+#' @export
+g3f_stock.std <- function(reports, 
+                          stock_reports = g3f_stock_reports(reports)){
+  
+  if (is.null(stock_reports)) return(NULL)
+  
+  by <- intersect(c("year", "step", "area", "stock", "age"), names(stock_reports))
+  grp <- do.call(paste, c(stock_reports[by], sep = "\r"))
+  
+  stock_reports <- 
+    within(stock_reports, {
+      mean_length <- ave(abundance * avg.length, grp, FUN = sum) / ave(abundance, grp, FUN = sum)
+      sqdev <- abundance * (avg.length - mean_length)^2
+      lengths <- abundance * avg.length
+      biomass <- abundance * weight
+    })
+  
+  stock_std <- 
+    aggregate_by(stock_reports, 
+                 by = by, 
+                 cols = c("abundance", "lengths", "sqdev", "biomass")) |> 
+    within( {
+      mean_weight <- biomass / abundance
+      stddev_length <- sqrt(sqdev / abundance)
+      mean_length <- lengths / abundance
+      number <- abundance
+    })
+  
+  return(
+    order_by(stock_std[c(by, "number", "mean_length", "stddev_length", "mean_weight")], by)
+  )
+}
+
+#' Summarises the consumption of, and the resulting mortality on, each stock by age
+#'
+#' @param reports Reported output of a G3 model
+#' @param fleet_reports Output of \code{\link{g3f_fleet_reports}}
+#' @param stock_std Output of \code{\link{g3f_stock.std}}
+#' @param fleet_names Names of the fleets (predators that are not stocks)
+#' @return Data frame or NULL. Consumption and mortality are by fleets only. If the model includes predator stocks, the consumption and mortality by all predators are included in the '_total' columns.
+#' @export
+g3f_stock.prey <- function(reports, 
+                           fleet_reports = g3f_fleet_reports(reports),
+                           stock_std = g3f_stock.std(reports),
+                           fleet_names = get_fleet_names(reports)){
+  
+  if (is.null(fleet_reports) || is.null(stock_std)) return(NULL)
+  
+  by <- intersect(c("year", "step", "area", "stock", "age"), names(fleet_reports))
+  cols <- c("number_consumed", "biomass_consumed")
+  
+  ## Consumption by fleets
+  stock_prey <- 
+    aggregate_by(fleet_reports[fleet_reports$fleet %in% fleet_names, ], 
+                 by = by, 
+                 cols = cols) |> 
+    merge(stock_std[c(by, "number")], by = by, all.x = TRUE)
+  
+  stock_prey$mortality <- 
+    calc_mortality(stock_prey$number_consumed, stock_prey$number, 
+                   get_step_size(reports, stock_prey$step))
+  
+  ## Add in biological consumption if included in model
+  if (!all(fleet_reports$fleet %in% fleet_names)){
+    
+    total <- aggregate_by(fleet_reports, by = by, cols = cols)
+    names(total)[match(cols, names(total))] <- paste0(cols, "_total")
+    
+    stock_prey <- merge(stock_prey, total, by = by, all.x = TRUE)
+    stock_prey$mortality_total <- 
+      calc_mortality(stock_prey$number_consumed_total, stock_prey$number, 
+                     get_step_size(reports, stock_prey$step))
+    
+  }
+  
+  return(order_by(stock_prey, by))
+}
+
+#' Summarises the consumption of each stock (prey) by each predator (fleets and predator stocks) by length group
+#'
+#' @param reports Reported output of a G3 model
+#' @param fleet_reports Output of \code{\link{g3f_fleet_reports}}
+#' @param stock_reports Output of \code{\link{g3f_stock_reports}}
+#' @param stock_full Output of \code{\link{g3f_stock.full}}
+#' @param suitability Output of \code{\link{g3f_suitability}}
+#' @return Data frame or NULL
+#' @export
+g3f_predator.prey <- function(reports,
+                              fleet_reports = g3f_fleet_reports(reports),
+                              stock_reports = g3f_stock_reports(reports),
+                              stock_full = g3f_stock.full(reports, stock_reports),
+                              suitability = g3f_suitability(reports)){
+  
+  if (is.null(fleet_reports) || is.null(stock_reports)) return(NULL)
+  
+  names(suitability)[names(suitability) == "length"] <- "avg.length"
+  
+  ## Merge in the suitabilities of each prey-predator combination, joining on 
+  ## the columns used by that suitability (e.g. no predator_length for fleets)
+  predator_prey <- 
+    split(fleet_reports, 
+          list(fleet_reports$stock, fleet_reports$fleet), 
+          drop = TRUE) |> 
+    lapply(function(x){
+      suits <- suitability[suitability$stock %in% x$stock & 
+                             suitability$fleet %in% x$fleet, , drop = FALSE]
+      if (nrow(suits) == 0) return(transform(x, suit = NA_real_))
+      suits <- suits[, vapply(suits, function(y) any(!is.na(y)), logical(1)), drop = FALSE]
+      return(merge(x, suits, all.x = TRUE))
+    }) |> 
+    rbind_fill()
+  
+  ## Abundance of the prey
+  by <- intersect(c("year", "step", "stock", "area", "age", "length"), names(stock_reports))
+  predator_prey <- merge(predator_prey, stock_reports[c(by, "abundance")], by = by, all.x = TRUE)
+  
+  predator_prey$suit[predator_prey$number_consumed %in% 0] <- 0
+  
+  ## TO-CHECK: for predator stocks, fleet_reports has a row per predator length
+  ## and age group, so each prey cell (abundance * weight) is counted once per 
+  ## predator group when harv.bio is summed below. This may inflate harv.bio,
+  ## suit (and fleet.info) for predator stocks. Fleets are unaffected.
+  predator_prey$harv.bio <- predator_prey$abundance * predator_prey$weight * predator_prey$suit
+  
+  predator_prey <- 
+    aggregate_by(predator_prey,
+                 by = c("year", "step", "area", "stock", "fleet", "avg.length"),
+                 cols = c("number_consumed", "biomass_consumed", "harv.bio"))
+  names(predator_prey)[names(predator_prey) == "avg.length"] <- "length"
+  
+  predator_prey <- 
+    merge(predator_prey, stock_full, 
+          by = intersect(c("year", "step", "area", "stock", "length"), names(stock_full)), 
+          all.x = TRUE) |> 
+    within( {
+      mortality <- calc_mortality(number_consumed, number, get_step_size(reports, step))
+      tb <- number * mean_weight
+      suit <- harv.bio / tb
+      suit <- ifelse(is.finite(suit), suit, 0)
+    })
+  
+  names(predator_prey)[match(c("fleet", "stock"), names(predator_prey))] <- c("predator", "prey")
+  
+  cols <- c("year", "step", "area", "prey", "predator", "length", 
+            "number_consumed", "biomass_consumed", "harv.bio", 
+            "mortality", "tb", "suit")
+  
+  return(
+    order_by(predator_prey[intersect(cols, names(predator_prey))], 
+             c("year", "step", "area", "prey", "predator", "length"))
+  )
+}
+
+#' Summarises the catch, harvestable biomass and harvest rate of each predator (fleets and predator stocks)
+#'
+#' @param reports Reported output of a G3 model
+#' @param predator_prey Output of \code{\link{g3f_predator.prey}}
+#' @return Data frame or NULL
+#' @export
+g3f_fleet.info <- function(reports, 
+                           predator_prey = g3f_predator.prey(reports)){
+  
+  if (is.null(predator_prey)) return(NULL)
+  
+  fleet_info <- 
+    aggregate_by(predator_prey, 
+                 by = c("year", "step", "area", "predator"),
+                 cols = c("harv.bio", "biomass_consumed"))
+  
+  names(fleet_info)[match(c("predator", "biomass_consumed"), names(fleet_info))] <- 
+    c("fleet", "amount")
+  
+  fleet_info$amount[is.na(fleet_info$amount)] <- 0
+  fleet_info$harv.rate <- ifelse(fleet_info$amount == 0, 0, fleet_info$amount / fleet_info$harv.bio)
+  
+  return(order_by(fleet_info, c("year", "step", "area", "fleet")))
+}
+
+#' Summarises the suitability of each stock to all fleets combined, by length group
+#'
+#' @param reports Reported output of a G3 model
+#' @param predator_prey Output of \code{\link{g3f_predator.prey}}
+#' @param fleet_names Names of the fleets (predators that are not stocks)
+#' @param stock_full Output of \code{\link{g3f_stock.full}}. Only used to return a table of NA suitabilities if there are no fleets.
+#' @return Data frame. The suitability of each fleet is weighted by its catch.
+#' @noRd
+g3f_harv.suit <- function(reports,
+                          predator_prey = g3f_predator.prey(reports),
+                          fleet_names = get_fleet_names(reports),
+                          stock_full = g3f_stock.full(reports)){
+  
+  cols <- c("year", "step", "area", "stock", "length")
+  
+  if (is.null(predator_prey) || !any(predator_prey$predator %in% fleet_names)){
+    if (is.null(stock_full)) return(NULL)
+    return(transform(unique(stock_full[cols]), suit = NA))
+  }
+  
+  harv_suit <- predator_prey[which(predator_prey$predator %in% fleet_names & 
+                                     predator_prey$biomass_consumed > 0), ]
+  harv_suit$weighted_suit <- harv_suit$biomass_consumed * harv_suit$suit
+  
+  harv_suit <- 
+    aggregate_by(harv_suit, 
+                 by = c("year", "step", "area", "prey", "length"),
+                 cols = c("weighted_suit", "biomass_consumed"))
+  
+  harv_suit$suit <- harv_suit$weighted_suit / harv_suit$biomass_consumed
+  names(harv_suit)[names(harv_suit) == "prey"] <- "stock"
+  
+  return(order_by(harv_suit[c(cols, "suit")], cols))
+}
+
+#' Summarises the annual catch and fishing mortality of each stock
+#'
+#' @param reports Reported output of a G3 model
+#' @param stock_prey Output of \code{\link{g3f_stock.prey}}
+#' @param stock_full Output of \code{\link{g3f_stock.full}}. Only used to return a table of NA mortalities if there are no fleets.
+#' @return Data frame
+#' @export
+g3f_f.by.year <- function(reports, 
+                          stock_prey = g3f_stock.prey(reports),
+                          stock_full = g3f_stock.full(reports)){
+  
+  by <- c("stock", "year", "area")
+  
+  if (is.null(stock_prey) || nrow(stock_prey) == 0){
+    if (is.null(stock_full)) return(NULL)
+    return(transform(unique(stock_full[by]), F = NA))
+  }
+  
+  ## TO-DO: Add weighted mortality
+  ## NOTE: age.min is set to the maximum age, as in the original g3_fit(), so
+  ## F is currently the mean mortality of the oldest age group
+  age_max <- tapply(stock_prey$age, stock_prey$stock, max)
+  age_min <- age_max
+  
+  in_range <- 
+    stock_prey$age >= age_min[stock_prey$stock] & 
+    stock_prey$age <= age_max[stock_prey$stock]
+  stock_prey$F <- ifelse(in_range, stock_prey$mortality, NA_real_)
+  
+  f_by_year <- aggregate_by(stock_prey, by = by, cols = c("biomass_consumed", "number_consumed"))
+  f_by_year$F <- aggregate_by(stock_prey, by = by, cols = "F", FUN = mean, na.rm = TRUE)$F
+  
+  names(f_by_year)[match(c("biomass_consumed", "number_consumed"), names(f_by_year))] <- 
+    c("catch", "num.catch")
+  
+  return(order_by(f_by_year, by))
+}
+
+#' Summarises the annual abundance, biomass, catch, fishing mortality and recruitment of each stock
+#'
+#' @param reports Reported output of a G3 model
+#' @param steps Which steps to include in the annual output? Vector of int.
+#' @param stock_full Output of \code{\link{g3f_stock.full}}
+#' @param harv_suit Suitability of each stock to all fleets combined (weighted by catch), by year, step, area and length group. Computed internally by default.
+#' @param f_by_year Output of \code{\link{g3f_f.by.year}}
+#' @param stock_recruitment Output of \code{\link{g3f_stock.recruitment}}
+#' @return Data frame or NULL
+#' @export
+g3f_res.by.year <- function(reports,
+                            steps = 1,
+                            stock_full = g3f_stock.full(reports),
+                            harv_suit = g3f_harv.suit(reports, stock_full = stock_full),
+                            f_by_year = g3f_f.by.year(reports, stock_full = stock_full),
+                            stock_recruitment = g3f_stock.recruitment(reports)){
+  
+  if (is.null(stock_full)) return(NULL)
+  
+  by <- c("stock", "year", "area")
+  
+  res_by_year <- 
+    stock_full[stock_full$step %in% steps, ] |> 
+    merge(harv_suit, by = c("stock", "year", "step", "area", "length"), all.x = TRUE) |> 
+    within( {
+      harv.biomass <- number * suit * mean_weight
+      harv.biomass[is.na(harv.biomass)] <- 0
+      total.biomass <- number * mean_weight
+      total.number <- number
+    }) |> 
+    aggregate_by(by = c(by, "step"), 
+                 cols = c("total.number", "total.biomass", "harv.biomass")) |> 
+    merge(f_by_year, by = by, all.x = TRUE)
+  
+  if (is.null(stock_recruitment)){
+    res_by_year$recruitment <- rep(NA_real_, nrow(res_by_year))
+  } else {
+    res_by_year <- 
+      merge(res_by_year, 
+            aggregate_by(stock_recruitment, by = by, cols = "recruitment"),
+            by = by, all.x = TRUE)
+  }
+  
+  return(order_by(res_by_year, c(by, "step")))
+}

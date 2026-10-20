@@ -4,12 +4,17 @@
 \alias{g3f_stock.recruitment}
 \title{Summarises the renewal and spawning reports for a gadget 3 model}
 \usage{
-g3f_stock.recruitment(reports, stock_rec_step = NULL)
+g3f_stock.recruitment(reports, rec_step = 1)
 }
 \arguments{
 \item{reports}{Reported output of a G3 model}
 
-\item{stock_rec_step}{Named list where each element contains the step(s) for a specific stock (name of the element). E.g. list(bli_imm = 1, bli_dummy = 2). If NULL or a stock is not included/misspelled, all steps are returned.}
+\item{rec_step}{The step(s) in which recruitment occurs. The renewal and spawning reports are not reset to zero in the steps following a recruitment event, so only the recruitment steps should be included. Either:
+\itemize{
+\item a vector of steps applied to all stocks, e.g. \code{rec_step = 2} or \code{rec_step = 1:4};
+\item a named list of steps for specific stocks (the names of the list), e.g. \code{rec_step = list(imm1 = 1, imm2 = 1:2)}. All steps are returned for stocks not included in the list;
+\item NULL, all steps are returned for all stocks.
+}}
 }
 \value{
 Data frame or NULL
