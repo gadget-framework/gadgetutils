@@ -984,35 +984,68 @@ g3f_harv.suit <- function(reports,
 
 #' Summarises the annual catch and fishing mortality of each stock
 #'
+#' @description The fishing mortality (F) of each stock is the annual F averaged over a range of ages (Fbar),
+#' calculated separately for each stock and area. F in a step is \eqn{-log(1 - C/N)}, where \eqn{C} is the number
+#' caught by fleets and \eqn{N} is the number at the beginning of the step. F at age is summed over the steps of the
+#' year, and averaged (unweighted) over the age range. To calculate Fbar for groups of stocks, e.g. the immature
+#' and mature stocks of a species, see \code{\link{g3_fit.update_fbar}}.
+#'
 #' @param reports Reported output of a G3 model
 #' @param stock_prey Output of \code{\link{g3f_stock.prey}}
 #' @param stock_full Output of \code{\link{g3f_stock.full}}. Only used to return a table of NA mortalities if there are no fleets.
+#' @param f_by_age The age range over which F is averaged. Either:
+#'   \itemize{
+#'     \item NULL (default), the oldest age of each stock, i.e. assuming the top of a logistic selection curve;
+#'     \item a vector of the minimum and maximum age (or all ages, e.g. \code{4:7}) applied to all stocks;
+#'     \item a named list with an age range for specific stocks, e.g. \code{list(imm = c(1, 2), mat = c(5, 6))}. 
+#'       The oldest age is used for stocks not included in the list.
+#'   }
+#'   F is NA for stocks with no ages within the range.
 #' @return Data frame
 #' @export
 g3f_f.by.year <- function(reports, 
                           stock_prey = g3f_stock.prey(reports),
-                          stock_full = g3f_stock.full(reports)){
+                          stock_full = g3f_stock.full(reports),
+                          f_by_age = NULL){
   
   by <- c("stock", "year", "area")
+  
+  if (!(is.null(f_by_age) || is.numeric(f_by_age) || 
+        (is.list(f_by_age) && !is.null(names(f_by_age)) && all(names(f_by_age) != "")))){
+    stop("f_by_age must be NULL, a vector of ages or a named list of ages for each stock")
+  }
   
   if (is.null(stock_prey) || nrow(stock_prey) == 0){
     if (is.null(stock_full)) return(NULL)
     return(transform(unique(stock_full[by]), F = NA))
   }
   
-  ## TO-DO: Add weighted mortality
-  ## NOTE: age.min is set to the maximum age, as in the original g3_fit(), so
-  ## F is currently the mean mortality of the oldest age group
-  age_max <- tapply(stock_prey$age, stock_prey$stock, max)
-  age_min <- age_max
+  ## Age range of each stock, the oldest age by default
+  stocks <- unique(stock_prey$stock)
+  if (is.list(f_by_age) && length(setdiff(names(f_by_age), stocks)) > 0){
+    warning("The following stocks in f_by_age have no fleet catches: ",
+            paste(setdiff(names(f_by_age), stocks), collapse = ", "))
+  }
+  age_range <- 
+    lapply(stats::setNames(stocks, stocks), function(s){
+      ages <- if (is.list(f_by_age)) f_by_age[[s]] else f_by_age
+      if (is.null(ages)) ages <- max(stock_prey$age[stock_prey$stock == s])
+      return(range(ages))
+    })
   
   in_range <- 
-    stock_prey$age >= age_min[stock_prey$stock] & 
-    stock_prey$age <= age_max[stock_prey$stock]
-  stock_prey$F <- ifelse(in_range, stock_prey$mortality, NA_real_)
+    stock_prey$age >= vapply(age_range, min, numeric(1))[stock_prey$stock] & 
+    stock_prey$age <= vapply(age_range, max, numeric(1))[stock_prey$stock]
   
-  f_by_year <- aggregate_by(stock_prey, by = by, cols = c("biomass_consumed", "number_consumed"))
-  f_by_year$F <- aggregate_by(stock_prey, by = by, cols = "F", FUN = mean, na.rm = TRUE)$F
+  no_ages <- setdiff(stocks, stock_prey$stock[in_range])
+  if (length(no_ages) > 0){
+    warning("F is NA for the following stocks, which have no ages within f_by_age: ",
+            paste(no_ages, collapse = ", "))
+  }
+  
+  f_by_year <-
+    aggregate_by(stock_prey, by = by, cols = c("biomass_consumed", "number_consumed")) |>
+    merge(calc_fbar(stock_prey[in_range, ], by = c("stock", "area")), by = by, all.x = TRUE)
   
   names(f_by_year)[match(c("biomass_consumed", "number_consumed"), names(f_by_year))] <- 
     c("catch", "num.catch")

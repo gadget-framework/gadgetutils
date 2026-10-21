@@ -7,7 +7,8 @@
 g3f_f.by.year(
   reports,
   stock_prey = g3f_stock.prey(reports),
-  stock_full = g3f_stock.full(reports)
+  stock_full = g3f_stock.full(reports),
+  f_by_age = NULL
 )
 }
 \arguments{
@@ -16,10 +17,23 @@ g3f_f.by.year(
 \item{stock_prey}{Output of \code{\link{g3f_stock.prey}}}
 
 \item{stock_full}{Output of \code{\link{g3f_stock.full}}. Only used to return a table of NA mortalities if there are no fleets.}
+
+\item{f_by_age}{The age range over which F is averaged. Either:
+\itemize{
+\item NULL (default), the oldest age of each stock, i.e. assuming the top of a logistic selection curve;
+\item a vector of the minimum and maximum age (or all ages, e.g. \code{4:7}) applied to all stocks;
+\item a named list with an age range for specific stocks, e.g. \code{list(imm = c(1, 2), mat = c(5, 6))}.
+The oldest age is used for stocks not included in the list.
+}
+F is NA for stocks with no ages within the range.}
 }
 \value{
 Data frame
 }
 \description{
-Summarises the annual catch and fishing mortality of each stock
+The fishing mortality (F) of each stock is the annual F averaged over a range of ages (Fbar),
+calculated separately for each stock and area. F in a step is \eqn{-log(1 - C/N)}, where \eqn{C} is the number
+caught by fleets and \eqn{N} is the number at the beginning of the step. F at age is summed over the steps of the
+year, and averaged (unweighted) over the age range. To calculate Fbar for groups of stocks, e.g. the immature
+and mature stocks of a species, see \code{\link{g3_fit.update_fbar}}.
 }

@@ -4,7 +4,7 @@
 \alias{g3_fit}
 \title{Build output summary suitable for feeding into gadgetplots}
 \usage{
-g3_fit(model, params, rec_step = 1, steps = 1)
+g3_fit(model, params, rec_step = 1, steps = 1, f_by_age = NULL)
 }
 \arguments{
 \item{model}{A G3 model built using \code{\link[gadget3]{g3_to_r}} or \code{\link[gadget3]{g3_to_tmb}}. The model must include \code{\link[gadget3]{g3a_report_detail}}.}
@@ -19,6 +19,15 @@ g3_fit(model, params, rec_step = 1, steps = 1)
 }}
 
 \item{steps}{Which steps to include in the annual output? Vector of int.}
+
+\item{f_by_age}{The age range over which F is averaged. Either:
+\itemize{
+\item NULL (default), the oldest age of each stock, i.e. assuming the top of a logistic selection curve;
+\item a vector of the minimum and maximum age (or all ages, e.g. \code{4:7}) applied to all stocks;
+\item a named list with an age range for specific stocks, e.g. \code{list(imm = c(1, 2), mat = c(5, 6))}.
+The oldest age is used for stocks not included in the list.
+}
+F is NA for stocks with no ages within the range.}
 }
 \value{
 List of data frames

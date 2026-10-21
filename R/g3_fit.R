@@ -4,12 +4,14 @@
 #' @param params The fitted parameters post-optimisation
 #' @inheritParams g3f_stock.recruitment
 #' @param steps Which steps to include in the annual output? Vector of int.
+#' @inheritParams g3f_f.by.year
 #' @return List of data frames
 #' @export
 g3_fit <- function(model, 
                    params, 
                    rec_step = 1, 
-                   steps = 1){
+                   steps = 1,
+                   f_by_age = NULL){
   
   ## Checks
   stopifnot(is.list(params))
@@ -57,13 +59,14 @@ g3_fit <- function(model,
   if (is.null(tmp$model_params)) tmp$model_params <- params
   if (is.null(tmp$model_data)) tmp$model_data <- data_env
 
-  return(g3_fit_inner(tmp, rec_step = rec_step, steps = steps))
+  return(g3_fit_inner(tmp, rec_step = rec_step, steps = steps, f_by_age = f_by_age))
 } 
 
 # Generate fit report from reporting output of g3_fit()
 g3_fit_inner <- function(tmp,
                          rec_step = 1,
-                         steps = 1) {
+                         steps = 1,
+                         f_by_age = NULL) {
   data_env <- tmp$model_data
 
   ## Returning parameters as they are put in for now
@@ -126,7 +129,10 @@ g3_fit_inner <- function(tmp,
                              fleet_names = fleet_names,
                              stock_full = stock.full)
   
-  f.by.year <- g3f_f.by.year(tmp, stock_prey = stock.prey, stock_full = stock.full)
+  f.by.year <- g3f_f.by.year(tmp, 
+                             stock_prey = stock.prey, 
+                             stock_full = stock.full,
+                             f_by_age = f_by_age)
   
   ## Annual output
   res.by.year <- g3f_res.by.year(tmp, 
@@ -172,6 +178,7 @@ g3_fit_inner <- function(tmp,
   return(out)
   
 }
+
 
 #' @title Extracts year and step columns
 #' @description Gadget3 reports have a time column in the format 'YEAR-STEP'. This function creates a 'year' and 'step' column by splitting the existing 'time' column. This is useful for processing gagdet3 reports.
@@ -340,11 +347,43 @@ get_step_size <- function(reports, step){
   return(reports$step_lengths[step] / sum(reports$step_lengths))
 }
 
-## Mortality rate (per year) from the numbers consumed in a step of length 'step_size' (proportion of year)
+## Mortality rate (per year) from the numbers consumed in a step of length 'step_size' (proportion of year).
+## Mortality is 0 if nothing was consumed (including when there is nothing to consume). Any other
+## non-finite values (missing numbers or consumption, or consumption >= numbers available) are
+## kept, with a warning, as they indicate a problem with the model or the reports
 calc_mortality <- function(consumed, number, step_size){
   out <- -log(1 - consumed / number) / step_size
-  out[is.na(out)] <- 0
+  out[consumed %in% 0] <- 0
+  if (any(!is.finite(out))){
+    warning(sum(!is.finite(out)), " mortality value(s) are NA, NaN or Inf, due to missing ",
+            "numbers or consumption, or consumption greater than or equal to the numbers available")
+  }
   return(out)
+}
+
+## Annual fishing mortality averaged over ages (Fbar) from stock.prey. The catch (C) and
+## numbers (N) are pooled within the 'by' columns (and year). 'data' must only contain the
+## ages to be averaged over. F in a step is -log(1 - C/N), and the annual F is the sum over steps.
+##   method = "ices":   F at age and step, summed over steps, then the unweighted mean over ages
+##   method = "gadget": F by step with C and N pooled over ages, summed over steps
+calc_fbar <- function(data, by = NULL, method = c("ices", "gadget")){
+  
+  method <- match.arg(method)
+  cols <- c("number_consumed", "number")
+  
+  if (method == "ices"){
+    fbar <- aggregate_by(data, by = c(by, "year", "step", "age"), cols = cols)
+    fbar$F <- calc_mortality(fbar$number_consumed, fbar$number, step_size = 1)
+    fbar <- 
+      aggregate_by(fbar, by = c(by, "year", "age"), cols = "F") |> 
+      aggregate_by(by = c(by, "year"), cols = "F", FUN = mean)
+  } else {
+    fbar <- aggregate_by(data, by = c(by, "year", "step"), cols = cols)
+    fbar$F <- calc_mortality(fbar$number_consumed, fbar$number, step_size = 1)
+    fbar <- aggregate_by(fbar, by = c(by, "year"), cols = "F")
+  }
+  
+  return(fbar[c(by, "year", "F")])
 }
 
 ## Predators that are not stocks
