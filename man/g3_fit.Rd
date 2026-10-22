@@ -4,7 +4,14 @@
 \alias{g3_fit}
 \title{Build output summary suitable for feeding into gadgetplots}
 \usage{
-g3_fit(model, params, rec.steps = 1, steps = 1, printatstart = 1)
+g3_fit(
+  model,
+  params,
+  rec.steps = 1,
+  steps = 1,
+  printatstart = 1,
+  f_by_age = NULL
+)
 }
 \arguments{
 \item{model}{A G3 model built using \code{\link[gadget3]{g3_to_r}} or \code{\link[gadget3]{g3_to_tmb}}. The model must include \code{\link[gadget3]{g3a_report_detail}}.}
@@ -16,10 +23,25 @@ g3_fit(model, params, rec.steps = 1, steps = 1, printatstart = 1)
 \item{steps}{Which steps to include in the annual output? Vector of int.}
 
 \item{printatstart}{Should the stock standard be printed at the start of the timestep (1) or the end (0)}
+
+\item{f_by_age}{The age range over which the annual fishing mortality (F) in \code{res.by.year} is averaged. Either:
+\itemize{
+\item NULL (default), the oldest age of each stock, i.e. assuming the top of a logistic selection curve;
+\item a vector of the minimum and maximum age (or all ages, e.g. \code{4:7}) applied to all stocks;
+\item a named list with an age range for specific stocks, e.g. \code{list(imm = c(1, 2), mat = c(5, 6))}.
+The oldest age is used for stocks not included in the list.
+}
+F is NA for stocks with no ages within the range.}
 }
 \value{
 List of tibbles
 }
 \description{
 Build output summary suitable for feeding into gadgetplots
+}
+\details{
+The fishing mortality (F) in \code{f.by.year} and \code{res.by.year} is calculated separately for each
+stock and area. F in a step is \eqn{-log(1 - C/N)}, where \eqn{C} is the number caught by fleets and \eqn{N} is
+the number at the beginning of the step. F at age is summed over the steps of the year, and averaged (unweighted)
+over the ages in \code{f_by_age}. By default, F is that of the oldest age of each stock only.
 }

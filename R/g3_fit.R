@@ -5,16 +5,33 @@
 #' @param rec.steps Which steps should be considered recruitment steps? Vector of int, or NULL for all steps.
 #' @param steps Which steps to include in the annual output? Vector of int.
 #' @param printatstart Should the stock standard be printed at the start of the timestep (1) or the end (0)
+#' @param f_by_age The age range over which the annual fishing mortality (F) in \code{res.by.year} is averaged. Either:
+#'   \itemize{
+#'     \item NULL (default), the oldest age of each stock, i.e. assuming the top of a logistic selection curve;
+#'     \item a vector of the minimum and maximum age (or all ages, e.g. \code{4:7}) applied to all stocks;
+#'     \item a named list with an age range for specific stocks, e.g. \code{list(imm = c(1, 2), mat = c(5, 6))}.
+#'       The oldest age is used for stocks not included in the list.
+#'   }
+#'   F is NA for stocks with no ages within the range.
+#' @details The fishing mortality (F) in \code{f.by.year} and \code{res.by.year} is calculated separately for each
+#'   stock and area. F in a step is \eqn{-log(1 - C/N)}, where \eqn{C} is the number caught by fleets and \eqn{N} is
+#'   the number at the beginning of the step. F at age is summed over the steps of the year, and averaged (unweighted)
+#'   over the ages in \code{f_by_age}. By default, F is that of the oldest age of each stock only.
 #' @return List of tibbles
 #' @export
 g3_fit <- function(model, 
                    params, 
                    rec.steps = 1, 
                    steps = 1,
-                   printatstart = 1){
+                   printatstart = 1,
+                   f_by_age = NULL){
   
   ## Checks
   stopifnot(is.data.frame(params))  # NB: Only accept table params, not list. The list form will likely disappear eventually
+  if (!(is.null(f_by_age) || is.numeric(f_by_age) || 
+        (is.list(f_by_age) && !is.null(names(f_by_age)) && all(names(f_by_age) != "")))){
+    stop("f_by_age must be NULL, a vector of ages or a named list of ages for each stock")
+  }
   if (!(printatstart %in% c(0,1))){
     stop("The printatstart argument must be '0' or '1' (class numeric)")
   }
@@ -78,13 +95,14 @@ g3_fit <- function(model,
   if (is.null(tmp$model_params)) tmp$model_params <- params
   if (is.null(tmp$model_data)) tmp$model_data <- data_env
 
-  return(g3_fit_inner(tmp, rec.steps = rec.steps, steps = steps))
+  return(g3_fit_inner(tmp, rec.steps = rec.steps, steps = steps, f_by_age = f_by_age))
 }
 
 # Generate fit report from reporting output of g3_fit()
 g3_fit_inner <- function(tmp,
                          rec.steps = 1,
-                         steps = 1) {
+                         steps = 1,
+                         f_by_age = NULL) {
   data_env <- tmp$model_data
 
   ## Returning parameters as they are put in for now
@@ -718,18 +736,46 @@ g3_fit_inner <- function(tmp,
         dplyr::summarise(suit = sum(.data$biomass_consumed * .data$suit) / sum(.data$biomass_consumed), .groups = 'drop') %>%
         dplyr::rename(stock = .data$prey)
       
-      ## TO-DO: Add weighted mortality 
+      ## Age range for F, the oldest age of each stock by default
+      f.age.range <- 
+        stock.prey %>% 
+        dplyr::group_by(.data$stock) %>% 
+        dplyr::summarise(age.min = max(.data$age), age.max = max(.data$age), .groups = 'drop')
+      
+      if (is.list(f_by_age)){
+        if (length(setdiff(names(f_by_age), f.age.range$stock)) > 0){
+          warning("The following stocks in f_by_age have no fleet catches: ",
+                  paste(setdiff(names(f_by_age), f.age.range$stock), collapse = ", "))
+        }
+        for (s in intersect(names(f_by_age), f.age.range$stock)){
+          f.age.range[f.age.range$stock == s, c('age.min', 'age.max')] <- as.list(range(f_by_age[[s]]))
+        }
+      } else if (!is.null(f_by_age)){
+        f.age.range$age.min <- min(f_by_age)
+        f.age.range$age.max <- max(f_by_age)
+      }
+      
+      ## F at age is summed over steps (stock.prey has a row per step, and F in a step is 
+      ## mortality * step_size = -log(1 - C/N)), then averaged (unweighted) over the age range
       f.by.year <-
         stock.prey %>% 
-        dplyr::left_join(
-          stock.prey %>% 
-            dplyr::group_by(.data$stock) %>% 
-            dplyr::summarise(age.min = max(.data$age), age.max=max(.data$age), .groups = 'drop'), 
-          by = "stock") %>% 
-        dplyr::group_by(.data$stock, .data$year, .data$area) %>%
+        dplyr::left_join(f.age.range, by = "stock") %>% 
+        dplyr::mutate(in_range = .data$age >= .data$age.min & .data$age <= .data$age.max) %>% 
+        dplyr::group_by(.data$stock, .data$year, .data$area, .data$age, .data$in_range) %>%
         dplyr::summarise(catch = sum(.data$biomass_consumed),
                          num.catch = sum(.data$number_consumed),
-                         F = mean(.data$mortality[.data$age >= .data$age.min & .data$age <= .data$age.max]), .groups = 'drop')
+                         F_age = sum(.data$mortality * step_size), .groups = 'drop') %>% 
+        dplyr::group_by(.data$stock, .data$year, .data$area) %>%
+        dplyr::summarise(catch = sum(.data$catch),
+                         num.catch = sum(.data$num.catch),
+                         F = if (any(.data$in_range)) mean(.data$F_age[.data$in_range]) else NA_real_, 
+                         .groups = 'drop')
+      
+      no_ages <- setdiff(f.by.year$stock, f.by.year$stock[!is.na(f.by.year$F)])
+      if (length(no_ages) > 0){
+        warning("F is NA for the following stocks, which have no ages within f_by_age: ",
+                paste(no_ages, collapse = ", "))
+      }
       
     }else{
       harv.suit <- stock.full[,c('year','step','stock','length')] %>% unique.data.frame() %>% transform(suit = NA)
